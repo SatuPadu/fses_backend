@@ -22,4 +22,9 @@ class Topic extends Model
     protected $fillable = [
         'name',
     ];
+
+    public function userPreferences()
+    {
+        return $this->hasMany(UserPreference::class, 'topic_id');
+    }
 }

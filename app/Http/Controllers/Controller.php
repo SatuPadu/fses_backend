@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SanitizeResponseHelper;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
@@ -21,9 +22,11 @@ class Controller extends BaseController
      */
     public function sendResponse($result, string $message): JsonResponse
     {
+        
         $response = [
             'success' => true,
-            'data'    => $result,
+            // 'data'    => $result,
+            'data'    => SanitizeResponseHelper::sanitizeResponse($result),
             'message' => $message,
         ];
 

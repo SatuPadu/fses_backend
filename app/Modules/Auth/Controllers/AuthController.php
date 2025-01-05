@@ -121,6 +121,6 @@ class AuthController extends Controller
             return $this->sendUnauthorizedError('User not authenticated.');
         }
 
-        return $this->sendResponse($user, 'User retrieved successfully.');
+        return $this->sendResponse(["user" => $user], 'User retrieved successfully.');
     }
 }
