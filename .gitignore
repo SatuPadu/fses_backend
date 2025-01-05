@@ -22,3 +22,7 @@ yarn-error.log
 /.vscode
 /.zed
 composer.lock
+/.DS_Store
+.DS_Store
+*/.DS_Store
+*.DS_Store

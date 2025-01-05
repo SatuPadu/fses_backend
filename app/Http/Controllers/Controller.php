@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 abstract class Controller
 {
@@ -34,15 +35,22 @@ abstract class Controller
      */
     public function sendError(string $error, array $errorMessages = [], int $code = 404): JsonResponse
     {
+        // Log the error
+        Log::error($error, [
+            'errorMessages' => $errorMessages,
+            'statusCode' => $code,
+        ]);
+    
+        // Prepare the response structure
         $response = [
             'success' => false,
             'message' => $error,
         ];
-
+    
         if (!empty($errorMessages)) {
             $response['data'] = $errorMessages;
         }
-
+    
         return response()->json($response, $code);
     }
 

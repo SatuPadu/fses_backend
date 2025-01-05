@@ -2,91 +2,125 @@
 
 namespace App\Modules\Auth\Controllers;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Hash;
-use App\Modules\Auth\Models\User;
-use Illuminate\Http\Request;
 
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Controller;
+use App\Modules\Auth\Services\AuthService;
+use App\Modules\Auth\Requests\LoginRequest;
+use App\Modules\Auth\Requests\RegisterRequest;
+
 
 class AuthController extends Controller
 {
+    private AuthService $authService;
+
     /**
-     * Register a new user.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * Inject the AuthService dependency.
      */
-    public function register(Request $request)
+    public function __construct(AuthService $authService)
     {
-        $validator = Validator::make($request->all(), [
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendValidationError($validator->errors()->toArray());
-        }
-
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        return $this->sendResponse($user, 'User registered successfully.');
+        $this->authService = $authService;
     }
 
     /**
-     * Log in a user and return a token.
+     * Handle user registration.
      *
      * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function login(Request $request)
+
+     public function register(Request $request): JsonResponse
+     {
+         try {
+             // Validate the request data using RegisterRequest
+             $validatedData = RegisterRequest::validate($request);
+     
+             // Pass the validated data to the AuthService for user registration
+             $result = $this->authService->register($validatedData);
+     
+             // Return a success response with the registration result
+             return $this->sendResponse($result, 'User registered successfully.');
+         } catch (\Illuminate\Validation\ValidationException $e) {
+             // Handle validation errors and return a structured error response
+             return $this->sendValidationError($e->errors());
+         } catch (\Exception $e) {
+             // Handle unexpected errors and log them for debugging     
+             return $this->sendError(
+                 'An unexpected error occurred. Please try again later.',
+                 ['error' => $e->getMessage()],
+                 500
+             );
+         }
+     }
+
+    /**
+     * Handle user login.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function login(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'email'    => 'required|string|email',
-            'password' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendValidationError($validator->errors()->toArray());
+        try {
+            // Retrieve validated data from the LoginRequest
+            $validatedData = LoginRequest::validate($request);
+    
+            // Pass the validated data to the AuthService for authentication
+            $result = $this->authService->login($validatedData);
+    
+            if (!$result) {
+                return $this->sendUnauthorizedError('Invalid credentials.');
+            }
+    
+            // Return a success response with the login result
+            return $this->sendResponse($result, 'User logged in successfully.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Handle validation errors and return a structured error response
+            return $this->sendValidationError($e->errors());
+        } catch (\Exception $e) {
+            // Handle unexpected errors and return a generic error response
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
         }
+    }
 
-        $user = User::where('email', $request->email)->first();
+ /**
+     * Handle user logout.
+     *
+     * @param Request $request 
+     * @return JsonResponse
+     * 
+     */
+    public function logout(Request $request): JsonResponse
+    {
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return $this->sendUnauthorizedError('Invalid credentials.');
+        try {
+            $request->user()->tokens()->delete();
+            return $this->sendResponse(null, 'User logged out successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Logout failed. Please try again later.', ['error' => $e->getMessage()], 500);
         }
-
-        $token = $user->createToken('api-token')->plainTextToken;
-
-        return $this->sendResponse(['token' => $token], 'User logged in successfully.');
     }
 
     /**
-     * Get the authenticated user.
+     * Get the authenticated user's details.
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function user(Request $request)
+    public function user(): JsonResponse
     {
-        return $this->sendResponse($request->user(), 'User retrieved successfully.');
-    }
+        $user = Auth::user();
 
-    /**
-     * Log out the user and revoke the token.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
+        if (!$user) {
+            return $this->sendUnauthorizedError('User not authenticated.');
+        }
 
-        return $this->sendResponse(null, 'User logged out successfully.');
+        return $this->sendResponse($user, 'User retrieved successfully.');
     }
 }
