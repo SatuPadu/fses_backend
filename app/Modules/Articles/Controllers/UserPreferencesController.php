@@ -3,98 +3,96 @@
 namespace App\Modules\Articles\Controllers;
 
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use App\Modules\Articles\Models\Article;
-use App\Modules\Articles\Models\UserPreference;
+use App\Http\Controllers\Controller;
+use App\Modules\Articles\Services\UserPreferencesService;
 
 class UserPreferencesController extends Controller
 {
+    protected UserPreferencesService $preferencesService;
+
+    /**
+     * Inject the UserPreferencesService dependency.
+     */
+    public function __construct(UserPreferencesService $preferencesService)
+    {
+        $this->preferencesService = $preferencesService;
+    }
+
     /**
      * Save user preferred topics, sources, and categories.
      *
      * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function setPreferences(Request $request)
     {
-        $validated = $request->validate([
-            'topics' => 'nullable|array',
-        ]);
+        try {
+            $userId = Auth::id();
+            $validatedData = $request->validate([
+                'topics' => 'nullable|array',
+                'sources' => 'nullable|array',
+                'categories' => 'nullable|array',
+            ]);
 
-        $user = Auth::user();
+            $preferences = $this->preferencesService->setPreferences($userId, $validatedData);
 
-        // Update or create user preferences
-        $preferences = UserPreference::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'topics' => $validated['topics'] ?? [],
-                'sources' => $validated['sources'] ?? [],
-                'categories' => $validated['categories'] ?? [],
-            ]
-        );
-
-        return response()->json([
-            'message' => 'Preferences updated successfully.',
-            'preferences' => $preferences,
-        ], 200);
+            return $this->sendResponse($preferences, 'Preferences updated successfully.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->sendValidationError($e->errors());
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'Failed to save preferences. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
+        }
     }
 
     /**
      * Retrieve user preferred topics, sources, and categories.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function getPreferences()
     {
-        $user = Auth::user();
-        $preferences = UserPreference::where('user_id', $user->id)->first();
+        try {
+            $userId = Auth::id();
+            $preferences = $this->preferencesService->getPreferences($userId);
 
-        if (!$preferences) {
-            return response()->json([
-                'message' => 'No preferences found for the user.',
-                'preferences' => null,
-            ], 200);
+            if (!$preferences) {
+                return $this->sendResponse(null, 'No preferences found for the user.');
+            }
+
+            return $this->sendResponse($preferences, 'Preferences retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'Failed to retrieve preferences. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
         }
-
-        return response()->json([
-            'message' => 'User preferences retrieved successfully.',
-            'preferences' => $preferences,
-        ], 200);
     }
 
     /**
      * Retrieve a personalized feed based on user preferences.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function getPersonalizedFeed()
     {
-        $user = Auth::user();
-        $preferences = UserPreference::where('user_id', $user->id)->first();
+        try {
+            $userId = Auth::id();
+            $feed = $this->preferencesService->getPersonalizedFeed($userId);
 
-        if (!$preferences) {
-            return response()->json([
-                'message' => 'No preferences found for the user.',
-                'feed' => [],
-            ], 200);
+            return $this->sendResponse($feed, 'Personalized feed retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'Failed to retrieve personalized feed. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
         }
-
-        $query = Article::query();
-
-        if (!empty($preferences->topics)) {
-            $query->whereIn('topic', $preferences->topics);
-        }
-
-        if (!empty($preferences->sources)) {
-            $query->whereIn('source', $preferences->sources);
-        }
-
-        if (!empty($preferences->categories)) {
-            $query->whereIn('category', $preferences->categories);
-        }
-
-        $articles = $query->paginate(10);
-        return $this->sendResponse($articles, 'Personalized feed retrieved successfully.');
     }
 }

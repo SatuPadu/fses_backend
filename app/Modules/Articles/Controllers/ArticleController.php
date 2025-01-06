@@ -3,88 +3,98 @@
 namespace App\Modules\Articles\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
-use App\Modules\Articles\Models\Article;
-use App\Modules\Articles\Models\Topic;
-use Illuminate\Support\Facades\Validator;
+use App\Modules\Articles\Services\ArticleService;
+use Illuminate\Validation\ValidationException;
 
 class ArticleController extends Controller
 {
+    protected ArticleService $articleService;
+
     /**
-     * Fetch articles with pagination.
+     * Inject the ArticleService dependency.
+     *
+     * @param ArticleService $articleService
+     */
+    public function __construct(ArticleService $articleService)
+    {
+        $this->articleService = $articleService;
+    }
+
+    /**
+     * Fetch articles with optional filters and pagination.
      *
      * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $query = Article::select('id', 'title', 'description', 'author', 'thumbnail', 'published_at');
-    
-        // Filter by keyword (searching in title or description)
-        if ($request->has('keyword')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->keyword . '%')
-                  ->orWhere('description', 'like', '%' . $request->keyword . '%');
-            });
+        try {
+            // Fetch articles with applied filters
+            $filters = $request->all();
+            $articles = $this->articleService->getArticles($filters);
+
+            return $this->sendResponse($articles, 'Articles fetched successfully.');
+        } catch (ValidationException $e) {
+            // Handle validation errors
+            return $this->sendValidationError($e->errors());
+        } catch (\Exception $e) {
+            // Handle unexpected errors
+            return $this->sendError(
+                'Failed to fetch articles. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
         }
-    
-        // Filter by date (published_at)
-        if ($request->has('date')) {
-            $query->whereRaw("DATE_FORMAT(published_at, '%d-%m-%Y') = ?", [$request->date]);
-        }
-    
-        // Filter by category (topic)
-        if ($request->has('category')) {
-            $query->where('topic', $request->category);
-        }
-    
-        // Filter by source (source_name)
-        if ($request->has('source')) {
-            $query->where('source_name', $request->source);
-        }
-    
-        // Paginate the results
-        $articles = $query->paginate(10);
-    
-        return $this->sendResponse($articles, 'Articles fetched successfully.');
     }
 
     /**
      * Fetch a single article by ID.
      *
      * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function show($id)
+    public function show(int $id): JsonResponse
     {
-        $article = Article::find($id);
+        try {
+            // Fetch the article by ID
+            $article = $this->articleService->getArticleById($id);
 
-        if (!$article) {
-            return response()->json(['error' => 'Article not found'], 404);
+            if (!$article) {
+                return $this->sendError('Article not found.', [], 404);
+            }
+
+            return $this->sendResponse(['detail' => $article], 'Article detail fetched successfully.');
+        } catch (\Exception $e) {
+            // Handle unexpected errors
+            return $this->sendError(
+                'Failed to fetch the article. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
         }
-        return $this->sendResponse(["detail" => $article], 'Article detail fetched successfully.');
     }
 
     /**
-     * Get all topics.
+     * Fetch all distinct sources.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function getTopics()
+    public function getSources(): JsonResponse
     {
-        // Fetch topics with pagination
-        $topics = Topic::pluck("name");
-        return $this->sendResponse($topics, 'Topics fetched successfully.');
-    }
-    /**
-     * Get all sources.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getSources()
-    {
-        // Fetch sources with pagination
-        $sources = Article::whereNotIn('source_name', ["[Removed]"])->distinct()->pluck("source_name");
-        return $this->sendResponse($sources, 'Sources fetched successfully.');
+        try {
+            // Fetch all sources
+            $sources = $this->articleService->getSources();
+
+            return $this->sendResponse($sources, 'Sources fetched successfully.');
+        } catch (\Exception $e) {
+            // Handle unexpected errors
+            return $this->sendError(
+                'Failed to fetch sources. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
+        }
     }
 }

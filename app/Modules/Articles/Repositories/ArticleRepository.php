@@ -2,32 +2,101 @@
 
 namespace App\Modules\Articles\Repositories;
 
+use Illuminate\Support\Facades\Auth;
 use App\Modules\Articles\Models\Article;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
+use App\Modules\Articles\Models\UserPreference;
 
 class ArticleRepository
-{
+{   
     /**
-     * Store or update an article using the provided data.
+     * Get articles with filters and pagination.
      *
-     * @param  array  $articleData
-     * @return \App\Modules\Articles\Models\Article
+     * @param array $filters
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
-    public function storeOrUpdate(array $articleData)
+    public function getFilteredArticles(array $filters)
     {
-        // Check if we have a published_at date to parse
-        if (!empty($articleData['published_at'])) {
-            try {
-                // Parse the given date (e.g. "2025-01-03T02:30:00Z") using Carbon
-                $date = Carbon::parse($articleData['published_at']);
-                
-                // Convert it to the MySQL-friendly format: "Y-m-d H:i:s"
-                $articleData['published_at'] = $date->format('Y-m-d H:i:s');
-            } catch (\Exception $e) {
-                $articleData['published_at'] = now()->format('Y-m-d H:i:s');
+        $query = Article::select('id', 'title', 'description', 'author', 'thumbnail', 'published_at')
+            ->orderBy('published_at', 'desc');
+    
+        // Check if user is authenticated
+        if (Auth::check()) {
+            $userId = Auth::id();
+    
+            // Fetch user preferences
+            $preferences = UserPreference::where('user_id', $userId)->first();
+    
+            if ($preferences) {
+                // Apply user preferences to the query
+                if (!empty($preferences->topics)) {
+                    $query->whereIn('topic', $preferences->topics);
+                }
+    
+                if (!empty($preferences->sources)) {
+                    $query->whereIn('source_name', $preferences->sources);
+                }
+    
+                if (!empty($preferences->categories)) {
+                    $query->whereIn('category', $preferences->categories);
+                }
             }
         }
+    
+        // Apply additional filters
+        if (!empty($filters['keyword'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('title', 'like', '%' . $filters['keyword'] . '%');
+            });
+        }
+    
+        if (!empty($filters['date'])) {
+            $query->whereRaw("DATE_FORMAT(published_at, '%d-%m-%Y') = ?", [$filters['date']]);
+        }
+    
+        if (!empty($filters['category'])) {
+            $query->where('topic', $filters['category']);
+        }
+    
+        if (!empty($filters['source'])) {
+            $query->where('source_name', $filters['source']);
+        }
+    
+        $perPage = $filters['per_page'] ?? 10; // Default to 10 per page
+        return $query->paginate($perPage);
+    }
+
+    /**
+     * Fetch a single article by ID.
+     *
+     * @param int $id
+     * @return Article|null
+     */
+    public function getArticleById(int $id)
+    {
+        return Article::find($id);
+    }
+
+    /**
+     * Get all distinct article sources.
+     *
+     * @return array
+     */
+    public function getSources()
+    {
+        return Article::whereNotIn('source_name', ['[Removed]'])
+            ->distinct()
+            ->pluck('source_name')
+            ->toArray();
+    }
+
+    /**
+     * Store or update an article in the database.
+     *
+     * @param array $articleData
+     * @return Article
+     */
+    public function storeOrUpdate(array $articleData): Article
+    {
         return Article::updateOrCreate(
             [
                 'title'        => $articleData['title'],

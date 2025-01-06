@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
+use App\Modules\Articles\Controllers\TopicController;
 use App\Modules\Articles\Controllers\ArticleController;
 use App\Modules\Articles\Controllers\UserPreferencesController;
 
@@ -27,7 +28,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('article')->group(function () {
     // Public Routes
     Route::get('/', [ArticleController::class, 'index']);
-    Route::get('topics', [ArticleController::class, 'getTopics']);
+    Route::get('/topics', [TopicController::class, 'getTopics']);
     Route::get('sources', [ArticleController::class, 'getSources']);
     Route::get('detail/{id}', [ArticleController::class, 'show']);
 

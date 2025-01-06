@@ -6,49 +6,37 @@ use Illuminate\Console\Command;
 use App\Modules\Aggregation\Services\NewsApiService;
 use App\Modules\Aggregation\Services\GuardianService;
 use App\Modules\Aggregation\Services\NYTimesService;
-use App\Modules\Articles\Repositories\ArticleRepository;
-use App\Modules\Articles\Repositories\TopicRepository;
-use Illuminate\Support\Facades\DB;
+use App\Modules\Articles\Services\ArticleService;
+use App\Modules\Articles\Services\TopicService;
 use Illuminate\Support\Facades\Cache;
 
 class FetchNewsCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'news:fetch';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Fetch news articles from various sources while respecting API limits';
 
     protected const NEWS_API_LIMIT = 24;      // Max 24 calls per 12 hours
     protected const GUARDIAN_LIMIT = 50;     // Max 50 calls per 12 hours
     protected const NYTIMES_LIMIT = 50;      // Max 50 calls per 12 hours
 
-    protected ArticleRepository $articleRepo;
-    protected TopicRepository $topicRepo;
+    protected ArticleService $articleService;
+    protected TopicService $topicService;
 
-    public function __construct(ArticleRepository $articleRepo, TopicRepository $topicRepo)
+    public function __construct(ArticleService $articleService, TopicService $topicService)
     {
         parent::__construct();
-        $this->articleRepo = $articleRepo;
-        $this->topicRepo = $topicRepo;
+        $this->articleService = $articleService;
+        $this->topicService = $topicService;
     }
 
     public function handle()
     {
-        $topics = DB::table('topics')->pluck('name')->toArray();
+        $topics = $this->topicService->getTopics();
 
         if (empty($topics)) {
             $this->warn('No topics found. Fetching from The Guardian API...');
-            $this->topicRepo->fetchAndStoreTopics();
-            $topics = DB::table('topics')->pluck('name')->toArray();
+            $this->topicService->fetchAndStoreTopics();
+            $topics = $this->topicService->getTopics();
 
             if (empty($topics)) {
                 $this->error('Failed to fetch topics.');
@@ -56,7 +44,7 @@ class FetchNewsCommand extends Command
             }
         }
 
-        $topicsPerBatch = ceil(count($topics) / 12); // Distribute topics across 12 API intervals
+        $topicsPerBatch = ceil(count($topics) / 12);
         $batches = array_chunk($topics, $topicsPerBatch);
 
         $apis = [
@@ -79,7 +67,7 @@ class FetchNewsCommand extends Command
                     $articles = $apiInstance->fetchArticles($batch);
 
                     foreach ($articles as $articleData) {
-                        $this->articleRepo->storeOrUpdate($articleData);
+                        $this->articleService->processAndStoreArticle($articleData);
                     }
 
                     $this->incrementUsage($key);

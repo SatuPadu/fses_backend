@@ -3,14 +3,21 @@
 namespace App\Modules\Auth\Services;
 
 use App\Modules\Auth\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Database\QueryException;
+use App\Modules\Auth\Repositories\UserRepository;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AuthService
 {
+    protected UserRepository $userRepository;
+
+    public function __construct(UserRepository $userRepository)
+    {
+        $this->userRepository = $userRepository;
+    }
+
     /**
      * Register a new user.
      *
@@ -20,21 +27,13 @@ class AuthService
     public function register(array $data): array
     {
         try {
-            // Check if the email already exists
-            if (User::where('email', $data['email'])->exists()) {
+            if ($this->userRepository->existsByEmail($data['email'])) {
                 throw ValidationException::withMessages([
                     'email' => ['A user with this email already exists.'],
                 ]);
             }
 
-            // Create the user in the database
-            $user = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => Hash::make($data['password']),
-            ]);
-
-            // Generate an API token for the user
+            $user = $this->userRepository->create($data);
             $token = $user->createToken($user->email)->plainTextToken;
 
             return [
@@ -42,13 +41,8 @@ class AuthService
                 'token' => $token,
             ];
         } catch (ValidationException $e) {
-            // Handle validation errors
             throw $e;
-        } catch (QueryException $e) {
-            // Handle database-related exceptions
-            throw new HttpException(500, 'Failed to register user due to a database error.', $e);
         } catch (\Exception $e) {
-            // Handle general exceptions
             throw new HttpException(500, 'An unexpected error occurred during registration.', $e);
         }
     }
@@ -62,17 +56,14 @@ class AuthService
      */
     public function login(array $credentials): ?array
     {
-        // Find the user by email
-        $user = User::where('email', $credentials['email'])->first();
+        $user = $this->userRepository->findByEmail($credentials['email']);
 
-        // Check if the user exists and if the password matches
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
-        // Generate an API token
         $token = $user->createToken($user->email)->plainTextToken;
 
         return [

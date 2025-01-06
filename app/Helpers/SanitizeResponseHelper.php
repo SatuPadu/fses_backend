@@ -20,7 +20,7 @@ class SanitizeResponseHelper
             return [
                 'items' => $items,
                 'pagination' => [
-                    'current_page' => $response->currentPage(),
+                    'page' => $response->currentPage(),
                     'last_page' => $response->lastPage(),
                     'per_page' => $response->perPage(),
                     'total' => $response->total(),

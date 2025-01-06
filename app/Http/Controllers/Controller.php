@@ -25,7 +25,6 @@ class Controller extends BaseController
         
         $response = [
             'success' => true,
-            // 'data'    => $result,
             'data'    => SanitizeResponseHelper::sanitizeResponse($result),
             'message' => $message,
         ];
