@@ -2,7 +2,6 @@
 
 namespace App\Modules\Articles\Repositories;
 
-use App\Modules\Articles\Models\Article;
 use App\Modules\Articles\Models\UserPreference;
 
 class UserPreferencesRepository
@@ -12,57 +11,84 @@ class UserPreferencesRepository
      *
      * @param int $userId
      * @param array $data
-     * @return array
+     * @return void
      */
-    public function savePreferences(int $userId, array $data): array
+    public function savePreferences(int $userId, array $data): void
     {
-        $preferences = UserPreference::updateOrCreate(
-            ['user_id' => $userId],
-            [
-                'topics' => $data['topics'] ?? [],
-                'sources' => $data['sources'] ?? [],
-                'categories' => $data['categories'] ?? [],
-            ]
-        );
+        // Process topics
+        if (!empty($data['topics'])) {
+            $this->savePreferencesByType($userId, 'topics', $data['topics']);
+        }
 
-        return $preferences->toArray();
+        // Process sources
+        if (!empty($data['sources'])) {
+            $this->savePreferencesByType($userId, 'sources', $data['sources']);
+        }
+
+        // Process authors
+        if (!empty($data['authors'])) {
+            $this->savePreferencesByType($userId, 'authors', $data['authors']);
+        }
     }
 
     /**
-     * Retrieve user preferences.
+     * Save preferences by type.
      *
      * @param int $userId
-     * @return array|null
+     * @param string $type
+     * @param array $values
+     * @return void
      */
-    public function getPreferences(int $userId): ?array
+    protected function savePreferencesByType(int $userId, string $type, array $values): void
     {
-        $preferences = UserPreference::where('user_id', $userId)->first();
-        return $preferences ? $preferences->toArray() : null;
+        // Remove old preferences of this type
+        UserPreference::where('user_id', $userId)
+            ->where('type', $type)
+            ->delete();
+
+        // Insert new preferences
+        $preferences = array_map(function ($value) use ($userId, $type) {
+            return [
+                'user_id' => $userId,
+                'type' => $type,
+                'value' => $value,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }, $values);
+
+        UserPreference::insert($preferences);
     }
 
     /**
-     * Retrieve articles based on user preferences.
+     * Get user preferences by type.
      *
-     * @param array $preferences
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @param int $userId
+     * @param string $type
+     * @return array
      */
-    public function getArticlesByPreferences(array $preferences)
+    public function getPreferencesByType(int $userId, string $type): array
     {
-        $query = Article::query();
+        return UserPreference::where('user_id', $userId)
+            ->where('type', $type)
+            ->pluck('value')
+            ->toArray();
+    }
 
-        if (!empty($preferences['topics'])) {
-            $query->whereIn('topic', $preferences['topics']);
-        }
-
-        if (!empty($preferences['sources'])) {
-            $query->whereIn('source_name', $preferences['sources']);
-        }
-
-        if (!empty($preferences['categories'])) {
-            $query->whereIn('category', $preferences['categories']);
-        }
-
-        $perPage = $filters['per_page'] ?? 10;
-        return $query->paginate($perPage);
+    /**
+     * Get all user preferences.
+     *
+     * @param int $userId
+     * @return array
+     */
+    public function getPreferences(int $userId): array
+    {
+        return UserPreference::where('user_id', $userId)
+            ->get(['type', 'value'])
+            ->groupBy('type')
+            ->map(function ($items) {
+                return $items->pluck('value')->toArray();
+            })
+            ->toArray();
     }
 }

@@ -29,13 +29,13 @@ Route::prefix('article')->group(function () {
     // Public Routes
     Route::get('/', [ArticleController::class, 'index']);
     Route::get('/topics', [TopicController::class, 'getTopics']);
-    Route::get('sources', [ArticleController::class, 'getSources']);
     Route::get('detail/{id}', [ArticleController::class, 'show']);
 
 });
 
-Route::middleware('auth:sanctum')->prefix('user')->group(function () {
+Route::middleware('auth:sanctum')->prefix('preferences')->group(function () {
+    Route::get('/', [UserPreferencesController::class, 'getPreferences']);
     Route::post('set-preferences', [UserPreferencesController::class, 'setPreferences']);
-    Route::get('preferences', [UserPreferencesController::class, 'getPreferences']);
-    Route::get('feed', [UserPreferencesController::class, 'getPersonalizedFeed']);
+    Route::get('sources', [ArticleController::class, 'getSourcesByTopics']);
+    Route::get('authors', [ArticleController::class, 'getAuthorsByTopicsAndSources']);
 });

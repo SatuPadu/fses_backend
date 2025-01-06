@@ -4,48 +4,46 @@ namespace App\Modules\Articles\Repositories;
 
 use Illuminate\Support\Facades\Auth;
 use App\Modules\Articles\Models\Article;
-use App\Modules\Articles\Models\UserPreference;
-
 class ArticleRepository
 {   
     /**
-     * Get articles with filters and pagination.
+     * Fetch all articles from the database.
      *
-     * @param array $filters
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @return \Illuminate\Pagination\LengthAwarePaginator
      */
     public function getFilteredArticles(array $filters)
     {
         $query = Article::select('id', 'title', 'description', 'author', 'thumbnail', 'published_at')
             ->orderBy('published_at', 'desc');
     
-        // Check if user is authenticated
+        // Check if the user is authenticated
         if (Auth::check()) {
-            $userId = Auth::id();
+            /** @var User $user */
+            $user = Auth::user();            
     
-            // Fetch user preferences
-            $preferences = UserPreference::where('user_id', $userId)->first();
+            // Apply user preferences if available
+            $topicPreferences = $user->getTopicPreferencesArray();
+            $sourcePreferences = $user->getSourcePreferencesArray();
+            $authorPreferences = $user->getAuthorPreferencesArray();
     
-            if ($preferences) {
-                // Apply user preferences to the query
-                if (!empty($preferences->topics)) {
-                    $query->whereIn('topic', $preferences->topics);
-                }
+            if (!empty($topicPreferences)) {
+                $query->whereIn('topic', $topicPreferences);
+            }
     
-                if (!empty($preferences->sources)) {
-                    $query->whereIn('source_name', $preferences->sources);
-                }
+            if (!empty($sourcePreferences)) {
+                $query->whereIn('source_name', $sourcePreferences);
+            }
     
-                if (!empty($preferences->categories)) {
-                    $query->whereIn('category', $preferences->categories);
-                }
+            if (!empty($authorPreferences)) {
+                $query->whereIn('author', $authorPreferences);
             }
         }
     
         // Apply additional filters
         if (!empty($filters['keyword'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('title', 'like', '%' . $filters['keyword'] . '%');
+                $q->where('title', 'like', '%' . $filters['keyword'] . '%')
+                  ->orWhere('description', 'like', '%' . $filters['keyword'] . '%');
             });
         }
     
@@ -61,7 +59,7 @@ class ArticleRepository
             $query->where('source_name', $filters['source']);
         }
     
-        $perPage = $filters['per_page'] ?? 10; // Default to 10 per page
+        $perPage = $filters['per_page'] ?? 10; // Default to 10 articles per page
         return $query->paginate($perPage);
     }
 
@@ -74,19 +72,6 @@ class ArticleRepository
     public function getArticleById(int $id)
     {
         return Article::find($id);
-    }
-
-    /**
-     * Get all distinct article sources.
-     *
-     * @return array
-     */
-    public function getSources()
-    {
-        return Article::whereNotIn('source_name', ['[Removed]'])
-            ->distinct()
-            ->pluck('source_name')
-            ->toArray();
     }
 
     /**
@@ -105,5 +90,35 @@ class ArticleRepository
             ],
             $articleData
         );
+    }
+
+    /**
+     * Fetch sources by topics.
+     *
+     * @param array $topics
+     * @return array
+     */
+    public function fetchSourcesByTopics(array $topics): array
+    {
+        return Article::whereIn('topic', $topics)
+            ->distinct()
+            ->pluck('source_name')
+            ->toArray();
+    }
+
+    /**
+     * Fetch authors by topics and sources.
+     *
+     * @param array $topics
+     * @param array $sources
+     * @return array
+     */
+    public function fetchAuthorsByTopicsAndSources(array $topics, array $sources): array
+    {
+        return Article::whereIn('topic', $topics)
+            ->whereIn('source_name', $sources)
+            ->distinct()
+            ->pluck('author')
+            ->toArray();
     }
 }

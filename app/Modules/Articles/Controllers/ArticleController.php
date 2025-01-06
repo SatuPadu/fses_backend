@@ -77,21 +77,52 @@ class ArticleController extends Controller
     }
 
     /**
-     * Fetch all distinct sources.
+     * Get sources by topics.
      *
-     * @return JsonResponse
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function getSources(): JsonResponse
+    public function getSourcesByTopics(Request $request)
     {
         try {
-            // Fetch all sources
-            $sources = $this->articleService->getSources();
+            $topics = $request->input('topics', []);
+            if (empty($topics)) {
+                return $this->sendError('Topics are required.', [], 400);
+            }
+
+            $sources = $this->articleService->getSourcesByTopics($topics);
 
             return $this->sendResponse($sources, 'Sources fetched successfully.');
         } catch (\Exception $e) {
-            // Handle unexpected errors
             return $this->sendError(
                 'Failed to fetch sources. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
+        }
+    }
+
+    /**
+     * Get authors by topics and sources.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAuthorsByTopicsAndSources(Request $request)
+    {
+        try {
+            $topics = $request->input('topics', []);
+            $sources = $request->input('sources', []);
+            if (empty($topics) || empty($sources)) {
+                return $this->sendError('Topics and sources are required.', [], 400);
+            }
+
+            $authors = $this->articleService->getAuthorsByTopicsAndSources($topics, $sources);
+
+            return $this->sendResponse($authors, 'Authors fetched successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'Failed to fetch authors. Please try again later.',
                 ['error' => $e->getMessage()],
                 500
             );

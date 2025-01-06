@@ -21,10 +21,10 @@ class UserPreferencesController extends Controller
     }
 
     /**
-     * Save user preferred topics, sources, and categories.
+     * Save user preferred topics, sources, and authors.
      *
      * @param Request $request
-     * @return JsonResponse
+     * @return \Illuminate\Http\JsonResponse
      */
     public function setPreferences(Request $request)
     {
@@ -33,7 +33,7 @@ class UserPreferencesController extends Controller
             $validatedData = $request->validate([
                 'topics' => 'nullable|array',
                 'sources' => 'nullable|array',
-                'categories' => 'nullable|array',
+                'authors' => 'nullable|array',
             ]);
 
             $preferences = $this->preferencesService->setPreferences($userId, $validatedData);
@@ -69,27 +69,6 @@ class UserPreferencesController extends Controller
         } catch (\Exception $e) {
             return $this->sendError(
                 'Failed to retrieve preferences. Please try again later.',
-                ['error' => $e->getMessage()],
-                500
-            );
-        }
-    }
-
-    /**
-     * Retrieve a personalized feed based on user preferences.
-     *
-     * @return JsonResponse
-     */
-    public function getPersonalizedFeed()
-    {
-        try {
-            $userId = Auth::id();
-            $feed = $this->preferencesService->getPersonalizedFeed($userId);
-
-            return $this->sendResponse($feed, 'Personalized feed retrieved successfully.');
-        } catch (\Exception $e) {
-            return $this->sendError(
-                'Failed to retrieve personalized feed. Please try again later.',
                 ['error' => $e->getMessage()],
                 500
             );

@@ -2,9 +2,10 @@
 
 namespace App\Modules\Articles\Services;
 
-use App\Modules\Articles\Repositories\ArticleRepository;
 use Carbon\Carbon;
+use App\Helpers\SanitizeResponseHelper;
 use Illuminate\Validation\ValidationException;
+use App\Modules\Articles\Repositories\ArticleRepository;
 
 class ArticleService
 {
@@ -49,20 +50,6 @@ class ArticleService
     }
 
     /**
-     * Get all distinct sources.
-     *
-     * @return array
-     */
-    public function getSources()
-    {
-        try {
-            return $this->articleRepo->getSources();
-        } catch (\Exception $e) {
-            throw new \RuntimeException('Unable to fetch sources. Please try again later.');
-        }
-    }
-
-    /**
      * Process and store or update an article.
      *
      * @param array $articleData
@@ -85,5 +72,28 @@ class ArticleService
         } catch (\Exception $e) {
             throw new \RuntimeException('Unable to process and store article. Please try again later.');
         }
+    }
+
+    /**
+     * Get sources by topics.
+     *
+     * @param array $topics
+     * @return array
+     */
+    public function getSourcesByTopics(array $topics): array
+    {
+        return $this->articleRepo->fetchSourcesByTopics($topics);
+    }
+
+    /**
+     * Get authors by topics and sources.
+     *
+     * @param array $topics
+     * @param array $sources
+     * @return array
+     */
+    public function getAuthorsByTopicsAndSources(array $topics, array $sources): array
+    {
+        return SanitizeResponseHelper::sanitizeAuthors($this->articleRepo->fetchAuthorsByTopicsAndSources($topics, $sources));
     }
 }

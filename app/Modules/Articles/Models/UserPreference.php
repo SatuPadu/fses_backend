@@ -15,7 +15,7 @@ class UserPreference extends Model
      *
      * @var string
      */
-    protected $table = 'user_topics';
+    protected $table = 'user_preferences';
 
     /**
      * The attributes that are mass assignable.
@@ -24,11 +24,14 @@ class UserPreference extends Model
      */
     protected $fillable = [
         'user_id',
-        'topic_id',
+        'type',
+        'value',
     ];
 
     /**
      * Get the user associated with the preference.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function user()
     {
@@ -36,10 +39,14 @@ class UserPreference extends Model
     }
 
     /**
-     * Get the topic associated with the preference.
+     * Scope to filter preferences by type.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string $type
+     * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function topic()
+    public function scopeOfType($query, string $type)
     {
-        return $this->belongsTo(Topic::class);
+        return $query->where('type', $type);
     }
 }

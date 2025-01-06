@@ -11,16 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('user_topics', function (Blueprint $table) {
+        Schema::create('user_preferences', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('topic_id');
+            $table->unsignedBigInteger('user_id')->index();
+            $table->enum('type', ['topics', 'sources', 'authors']);
+            $table->string('value');
             $table->timestamps();
-
+        
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('topic_id')->references('id')->on('topics')->onDelete('cascade');
-
-            $table->unique(['user_id', 'topic_id']);
+            $table->unique(['user_id', 'type', 'value']);
         });
     }
 
@@ -29,6 +28,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('user_topics');
+        Schema::table('user_preferences', function (Blueprint $table) {
+            $table->dropForeign(['user_id']);
+        });
+        Schema::dropIfExists('user_preferences');
     }
 };
