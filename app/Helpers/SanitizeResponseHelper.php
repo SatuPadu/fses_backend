@@ -30,7 +30,6 @@ class SanitizeResponseHelper
             ];
         }
 
-        // Handle non-paginated data
         return $response;
     }
 
@@ -74,7 +73,6 @@ class SanitizeResponseHelper
             $flatAuthors = array_merge($flatAuthors, $parts);
         }
 
-        // Ensure uniqueness
         return array_values(array_unique($flatAuthors));
     }
 }

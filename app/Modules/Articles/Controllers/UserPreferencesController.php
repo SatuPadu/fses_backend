@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
+use App\Modules\Articles\Requests\UserPreferenceRequest;
 use App\Modules\Articles\Services\UserPreferencesService;
 
 class UserPreferencesController extends Controller
@@ -20,22 +21,21 @@ class UserPreferencesController extends Controller
         $this->preferencesService = $preferencesService;
     }
 
-    /**
+/**
      * Save user preferred topics, sources, and authors.
      *
      * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function setPreferences(Request $request)
     {
         try {
-            $userId = Auth::id();
-            $validatedData = $request->validate([
-                'topics' => 'nullable|array',
-                'sources' => 'nullable|array',
-                'authors' => 'nullable|array',
-            ]);
+            // Validate the incoming request using UserPreferenceRequest
+            $validatedData = UserPreferenceRequest::validate($request);
 
+            $userId = Auth::id();
+
+            // Save the preferences via the service
             $preferences = $this->preferencesService->setPreferences($userId, $validatedData);
 
             return $this->sendResponse($preferences, 'Preferences updated successfully.');

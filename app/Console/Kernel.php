@@ -18,10 +18,9 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
-        // Append output to a scheduler log file
         $schedule->command('news:fetch')
             ->everyMinute()
-            ->withoutOverlapping() // Prevents multiple executions of the same command
+            ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/scheduler.log'));
     }
 
