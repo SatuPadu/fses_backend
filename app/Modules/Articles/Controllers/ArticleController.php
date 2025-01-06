@@ -18,50 +18,35 @@ class ArticleController extends Controller
      */
     public function index(Request $request)
     {
-        $articles = Article::paginate(10); // Adjust per-page count as needed
-        return response()->json($articles, 200);
-    }
-
-    /**
-     * Search articles based on keyword, date, category, or source.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function search(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'keyword' => 'nullable|string',
-            'date' => 'nullable|date',
-            'category' => 'nullable|string',
-            'source' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $query = Article::query();
-
+        $query = Article::select('id', 'title', 'description', 'author', 'thumbnail', 'published_at');
+    
+        // Filter by keyword (searching in title or description)
         if ($request->has('keyword')) {
-            $query->where('title', 'like', '%' . $request->keyword . '%')
-                ->orWhere('content', 'like', '%' . $request->keyword . '%');
+            $query->where(function ($q) use ($request) {
+                $q->where('title', 'like', '%' . $request->keyword . '%')
+                  ->orWhere('description', 'like', '%' . $request->keyword . '%');
+            });
         }
-
+    
+        // Filter by date (published_at)
         if ($request->has('date')) {
-            $query->whereDate('published_at', $request->date);
+            $query->whereRaw("DATE_FORMAT(published_at, '%d-%m-%Y') = ?", [$request->date]);
         }
-
+    
+        // Filter by category (topic)
         if ($request->has('category')) {
-            $query->where('category', $request->category);
+            $query->where('topic', $request->category);
         }
-
+    
+        // Filter by source (source_name)
         if ($request->has('source')) {
-            $query->where('source', $request->source);
+            $query->where('source_name', $request->source);
         }
-
-        $articles = $query->paginate(10); // Adjust per-page count as needed
-        return response()->json($articles, 200);
+    
+        // Paginate the results
+        $articles = $query->paginate(10);
+    
+        return $this->sendResponse($articles, 'Articles fetched successfully.');
     }
 
     /**
@@ -77,27 +62,29 @@ class ArticleController extends Controller
         if (!$article) {
             return response()->json(['error' => 'Article not found'], 404);
         }
-
-        return response()->json($article, 200);
+        return $this->sendResponse(["detail" => $article], 'Article detail fetched successfully.');
     }
 
     /**
-     * Get all topics in a paginated format.
+     * Get all topics.
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getTopics(Request $request)
+    public function getTopics()
     {
-        // Validate pagination inputs (optional)
-        $validated = $request->validate([
-            'per_page' => 'nullable|integer|min:1|max:100',
-        ]);
-
-        $perPage = $validated['per_page'] ?? 10; // Default to 10 items per page
-
         // Fetch topics with pagination
-        $topics = Topic::select("id", "name")->paginate($perPage);
+        $topics = Topic::pluck("name");
         return $this->sendResponse($topics, 'Topics fetched successfully.');
+    }
+    /**
+     * Get all sources.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getSources()
+    {
+        // Fetch sources with pagination
+        $sources = Article::whereNotIn('source_name', ["[Removed]"])->distinct()->pluck("source_name");
+        return $this->sendResponse($sources, 'Sources fetched successfully.');
     }
 }

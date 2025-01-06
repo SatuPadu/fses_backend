@@ -16,7 +16,7 @@ class UserPreferencesController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function setTopics(Request $request)
+    public function setPreferences(Request $request)
     {
         $validated = $request->validate([
             'topics' => 'nullable|array',

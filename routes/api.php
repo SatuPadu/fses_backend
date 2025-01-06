@@ -28,13 +28,13 @@ Route::prefix('article')->group(function () {
     // Public Routes
     Route::get('/', [ArticleController::class, 'index']);
     Route::get('topics', [ArticleController::class, 'getTopics']);
-    Route::get('search', [ArticleController::class, 'search']);
+    Route::get('sources', [ArticleController::class, 'getSources']);
     Route::get('detail/{id}', [ArticleController::class, 'show']);
 
 });
 
 Route::middleware('auth:sanctum')->prefix('user')->group(function () {
-    Route::post('preferences/topics', [UserPreferencesController::class, 'setTopics']);
+    Route::post('set-preferences', [UserPreferencesController::class, 'setPreferences']);
     Route::get('preferences', [UserPreferencesController::class, 'getPreferences']);
     Route::get('feed', [UserPreferencesController::class, 'getPersonalizedFeed']);
 });
