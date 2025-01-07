@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Articles\Controllers\TopicController;
 use App\Modules\Articles\Controllers\ArticleController;
+use App\Modules\Auth\Controllers\PasswordResetController;
 use App\Modules\Articles\Controllers\UserPreferencesController;
 
 
@@ -23,6 +24,14 @@ Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
     });
+});
+
+Route::prefix('password')->group(function () {
+    Route::post('reset-link', [PasswordResetController::class, 'forgotPassword'])
+        ->middleware('throttle:5,1');
+
+    Route::post('reset', [PasswordResetController::class, 'resetPassword'])
+        ->middleware('throttle:5,1');
 });
 
 Route::prefix('article')->group(function () {
