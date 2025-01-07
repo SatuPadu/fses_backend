@@ -31,12 +31,18 @@ class FetchNewsCommand extends Command
 
     public function handle()
     {
-        $topics = $this->topicService->getTopics();
+        // Cache topics to reduce repetitive DB calls
+        $topics = Cache::remember('news:fetch:topics', now()->addMinutes(30), function () {
+            return $this->topicService->getTopics();
+        });
 
         if (empty($topics)) {
             $this->warn('No topics found. Fetching from The Guardian API...');
             $this->topicService->fetchAndStoreTopics();
-            $topics = $this->topicService->getTopics();
+
+            $topics = Cache::remember('news:fetch:topics', now()->addMinutes(30), function () {
+                return $this->topicService->getTopics();
+            });
 
             if (empty($topics)) {
                 $this->error('Failed to fetch topics.');
@@ -57,8 +63,10 @@ class FetchNewsCommand extends Command
             $this->info('Processing topics: ' . implode(', ', $batch));
 
             foreach ($apis as $key => [$apiClass, $limit]) {
-                if (Cache::get("api_failed_{$key}") || $this->exceedsLimit($key, $limit)) {
-                    $this->warn("Skipping {$key} due to rate limits or failure.");
+                $cacheKey = "news:fetch:api:{$key}";
+
+                if ($this->exceedsLimit($cacheKey, $limit)) {
+                    $this->warn("Skipping {$key} due to rate limits.");
                     continue;
                 }
 
@@ -70,11 +78,11 @@ class FetchNewsCommand extends Command
                         $this->articleService->processAndStoreArticle($articleData);
                     }
 
-                    $this->incrementUsage($key);
+                    $this->incrementUsage($cacheKey);
 
                 } catch (\Exception $e) {
                     $this->error("Failed to fetch articles from {$key}: " . $e->getMessage());
-                    Cache::put("api_failed_{$key}", true, now()->addDay());
+                    Cache::put("news:fetch:api_failed:{$key}", true, now()->addDay());
                 }
             }
         }
@@ -82,14 +90,14 @@ class FetchNewsCommand extends Command
         $this->info('All topics processed successfully.');
     }
 
-    protected function exceedsLimit(string $api, int $limit): bool
+    protected function exceedsLimit(string $cacheKey, int $limit): bool
     {
-        return Cache::get("api_usage_{$api}", 0) >= $limit;
+        return Cache::get("{$cacheKey}:usage", 0) >= $limit;
     }
 
-    protected function incrementUsage(string $api): void
+    protected function incrementUsage(string $cacheKey): void
     {
-        Cache::increment("api_usage_{$api}");
-        Cache::put("api_usage_reset_{$api}", now()->addHours(12), now()->addHours(12));
+        Cache::increment("{$cacheKey}:usage");
+        Cache::put("{$cacheKey}:reset", now()->addHours(12), now()->addHours(12));
     }
 }

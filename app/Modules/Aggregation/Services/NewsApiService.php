@@ -3,7 +3,7 @@
 namespace App\Modules\Aggregation\Services;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\RequestException;
 
 class NewsApiService
 {
@@ -14,65 +14,72 @@ class NewsApiService
      *
      * @param  array  $topics  List of topics to fetch articles for.
      * @return array
-     * @throws \Exception If a rate limit (429) is reached.
+     * @throws \RuntimeException If rate limit or other errors occur.
      */
     public function fetchArticles(array $topics): array
     {
-        $apiKey = config('services.newsapi.key'); // Retrieve API key from configuration
+        $apiKey = config('services.newsapi.key');
+        if (!$apiKey) {
+            throw new \RuntimeException('NewsAPI key is missing in the configuration.');
+        }
 
-        try {
-            $articles = collect();
+        $articles = [];
 
-            foreach ($topics as $topic) {
-                // Fetch articles for each topic
-                $response = Http::get($this->apiUrl, [
-                    'apiKey' => $apiKey,
-                    'qInTitle' => urlencode($topic),
-                    'from' => now()->subDays(30)->toDateString(), // Fetch articles from the last 30 days
-                    'sortBy' => 'popularity',
-                ]);
+        foreach ($topics as $topic) {
+            try {
+                $response = Http::timeout(10) // Set a timeout for the request
+                    ->get($this->apiUrl, [
+                        'apiKey'    => $apiKey,
+                        'qInTitle'  => $topic,
+                        'from'      => now()->subDays(30)->toDateString(), // Fetch articles from the last 30 days
+                        'sortBy'    => 'popularity',
+                    ]);
 
                 if ($response->status() === 429) {
-                    // Log and break out of the loop on rate limit
-                    Log::error('Rate limit reached for NewsAPI. Breaking out of the loop.', [
-                        'topic' => $topic,
-                    ]);
-                    break;
+                    throw new \RuntimeException('Rate limit reached for NewsAPI. Please retry later.');
                 }
 
-                if ($response->successful()) {
-                    $articles = $articles->merge(
-                        collect($response->json('articles'))->map(function (array $article) use ($topic): array {
-                            return [
-                                'title' => $article['title'] ?? '',
-                                'description' => $article['description'] ?? '',
-                                'content' => $article['content'] ?? '',
-                                'author' => $article['author'] ?? '',
-                                'source_name' => $article['source']['name'] ?? '',
-                                'published_at' => $article['publishedAt'] ?? now(),
-                                'url' => $article['url'] ?? null,
-                                'thumbnail' => $this->extractThumbnail($article),
-                                'topic' => $topic,
-                            ];
-                        })
-                    );
-                } else {
-                    Log::error('Failed to fetch articles from NewsAPI', [
-                        'status' => $response->status(),
-                        'body' => $response->body(),
-                        'topic' => $topic,
-                    ]);
+                if (!$response->successful()) {
+                    throw new RequestException($response);
                 }
+
+                $articles = array_merge($articles, $this->transformArticles($response->json('articles') ?? [], $topic));
+            } catch (RequestException $e) {
+                throw new \RuntimeException(
+                    "Failed to fetch articles for topic '{$topic}': " . $e->getMessage()
+                );
+            } catch (\Exception $e) {
+                throw new \RuntimeException(
+                    "An unexpected error occurred while fetching articles for topic '{$topic}': " . $e->getMessage()
+                );
             }
-
-            return $articles->toArray();
-        } catch (\Exception $e) {
-            Log::error('Exception occurred while fetching articles from NewsAPI', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e; // Re-throw the exception to ensure it propagates
         }
+
+        return $articles;
+    }
+
+    /**
+     * Transform API results into structured articles.
+     *
+     * @param  array  $articles  The API response articles.
+     * @param  string $topic     The topic associated with the articles.
+     * @return array
+     */
+    protected function transformArticles(array $articles, string $topic): array
+    {
+        return collect($articles)->map(function (array $article) use ($topic) {
+            return [
+                'title'        => $article['title'] ?? '',
+                'description'  => $article['description'] ?? '',
+                'content'      => $article['content'] ?? '',
+                'author'       => $article['author'] ?? '',
+                'source_name'  => $article['source']['name'] ?? '',
+                'published_at' => $article['publishedAt'] ?? now(),
+                'url'          => $article['url'] ?? null,
+                'thumbnail'    => $this->extractThumbnail($article),
+                'topic'        => $topic,
+            ];
+        })->toArray();
     }
 
     /**
