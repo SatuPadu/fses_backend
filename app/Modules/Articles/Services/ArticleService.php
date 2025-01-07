@@ -29,11 +29,7 @@ class ArticleService
     public function getArticles(array $filters)
     {
         try {
-            $cacheKey = $this->getCacheKey('articles', $filters);
-
-            return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($filters) {
-                return $this->articleRepo->getFilteredArticles($filters);
-            });
+            return $this->articleRepo->getFilteredArticles($filters);
         } catch (\Exception $e) {
             throw new \RuntimeException('Unable to fetch articles. Please try again later.');
         }
