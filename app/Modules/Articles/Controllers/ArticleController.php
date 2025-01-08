@@ -86,21 +86,13 @@ class ArticleController extends Controller
     {
         try {
             $topics = $request->input('topics', []);
-            
-            // Ensure 'topics' is an array
-            if (!is_array($topics)) {
-                throw new \InvalidArgumentException('The topics parameter must be an array.');
-            }
-    
             if (empty($topics)) {
                 return $this->sendError('Topics are required.', [], 400);
             }
-    
+
             $sources = $this->articleService->getSourcesByTopics($topics);
-    
+
             return $this->sendResponse($sources, 'Sources fetched successfully.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->sendError($e->getMessage(), [], 400);
         } catch (\Exception $e) {
             return $this->sendError(
                 'Failed to fetch sources. Please try again later.',
@@ -121,25 +113,13 @@ class ArticleController extends Controller
         try {
             $topics = $request->input('topics', []);
             $sources = $request->input('sources', []);
-    
-            // Ensure 'topics' and 'sources' are arrays
-            if (!is_array($topics)) {
-                throw new \InvalidArgumentException('The topics parameter must be an array.');
-            }
-    
-            if (!is_array($sources)) {
-                throw new \InvalidArgumentException('The sources parameter must be an array.');
-            }
-    
             if (empty($topics) || empty($sources)) {
                 return $this->sendError('Topics and sources are required.', [], 400);
             }
-    
+
             $authors = $this->articleService->getAuthorsByTopicsAndSources($topics, $sources);
-    
+
             return $this->sendResponse($authors, 'Authors fetched successfully.');
-        } catch (\InvalidArgumentException $e) {
-            return $this->sendError($e->getMessage(), [], 400);
         } catch (\Exception $e) {
             return $this->sendError(
                 'Failed to fetch authors. Please try again later.',

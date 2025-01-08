@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
-use Illuminate\Validation\ValidationException;
 use App\Modules\Articles\Requests\UserPreferenceRequest;
 use App\Modules\Articles\Services\UserPreferencesService;
 
@@ -22,7 +21,7 @@ class UserPreferencesController extends Controller
         $this->preferencesService = $preferencesService;
     }
 
-    /**
+/**
      * Save user preferred topics, sources, and authors.
      *
      * @param Request $request
@@ -37,20 +36,14 @@ class UserPreferencesController extends Controller
             $userId = Auth::id();
 
             // Save the preferences via the service
-            $this->preferencesService->setPreferences($userId, $validatedData);
+            $preferences = $this->preferencesService->setPreferences($userId, $validatedData);
 
-            return $this->sendResponse(null, 'Preferences updated successfully.');
-        } catch (ValidationException $e) {
+            return $this->sendResponse($preferences, 'Preferences updated successfully.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->sendValidationError($e->errors());
-        } catch (\InvalidArgumentException $e) {
-            return $this->sendError(
-                'Invalid preferences provided.',
-                ['error' => $e->getMessage()],
-                422
-            );
         } catch (\Exception $e) {
             return $this->sendError(
-                'Failed to save preferences due to an unexpected error. Please try again later.',
+                'Failed to save preferences. Please try again later.',
                 ['error' => $e->getMessage()],
                 500
             );
