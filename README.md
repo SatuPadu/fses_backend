@@ -30,8 +30,7 @@ cd news-aggregator-test
 Setup your .env file and then build the Docker image and start the container using the following command:
 
 ```sh
-docker compose build
-docker compose up
+docker compose up --build
 ```
 
 This will build the Docker image and start a container exposing the application on port 8080.
