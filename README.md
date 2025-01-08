@@ -51,6 +51,7 @@ Inside the container, run the following commands to install composer, migrate an
 
 ```sh
 composer install
+php artisan key:generate
 php artisan migrate
 php artisan db:seed
 ```
