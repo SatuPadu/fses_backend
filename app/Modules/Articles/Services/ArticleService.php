@@ -92,14 +92,18 @@ class ArticleService
      */
     public function getSourcesByTopics(array $topics): array
     {
+        if (empty($topics)) {
+            throw new \InvalidArgumentException('Topics cannot be empty.');
+        }
+    
         try {
-            $cacheKey = $this->getCacheKey('sources_by_topics', ['topics' => $topics]);
-
+            $cacheKey = 'sources_by_topics:' . md5(json_encode($topics));
+    
             return Cache::remember($cacheKey, now()->addHours(1), function () use ($topics) {
                 return $this->articleRepo->fetchSourcesByTopics($topics);
             });
         } catch (\Exception $e) {
-            throw new \RuntimeException('Unable to fetch sources. Please try again later.');
+            throw new \RuntimeException('Unable to fetch sources. Please try again later.', 0, $e);
         }
     }
 
@@ -112,19 +116,27 @@ class ArticleService
      */
     public function getAuthorsByTopicsAndSources(array $topics, array $sources): array
     {
+        if (empty($topics)) {
+            throw new \InvalidArgumentException('Topics cannot be empty.');
+        }
+    
+        if (empty($sources)) {
+            throw new \InvalidArgumentException('Sources cannot be empty.');
+        }
+    
         try {
             $cacheKey = $this->getCacheKey('authors_by_topics_and_sources', [
                 'topics' => $topics,
                 'sources' => $sources,
             ]);
-
+    
             return Cache::remember($cacheKey, now()->addHours(1), function () use ($topics, $sources) {
                 return SanitizeResponseHelper::sanitizeAuthors(
                     $this->articleRepo->fetchAuthorsByTopicsAndSources($topics, $sources)
                 );
             });
         } catch (\Exception $e) {
-            throw new \RuntimeException('Unable to fetch authors. Please try again later.');
+            throw new \RuntimeException('Unable to fetch authors. Please try again later.', 0, $e);
         }
     }
 

@@ -17,30 +17,30 @@ class UserPreferencesService
         $this->preferencesRepo = $preferencesRepo;
     }
 
-/**
- * Validate and save user preferences.
- *
- * @param int $userId
- * @param array $data
- * @return void
- *
- * @throws \InvalidArgumentException
- */
-public function setPreferences(int $userId, array $data): void
-{
-    try {
-        // Validate preferences
-        $this->validatePreferences($data);
+    /**
+     * Validate and save user preferences.
+     *
+     * @param int $userId
+     * @param array $data
+     * @return void
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function setPreferences(int $userId, array $data): void
+    {
+        try {
+            // Validate preferences
+            $this->validatePreferences($data);
 
-        $this->preferencesRepo->savePreferences($userId, $data);
+            $this->preferencesRepo->savePreferences($userId, $data);
 
-        Cache::forget("user_preferences_{$userId}");
-    } catch (\InvalidArgumentException $e) {
-        throw new \InvalidArgumentException($e->getMessage());
-    } catch (\Exception $e) {
-        throw new \Exception("An unexpected error occurred while saving preferences.");
+            Cache::forget("user_preferences_{$userId}");
+        } catch (\InvalidArgumentException $e) {
+            throw new \InvalidArgumentException($e->getMessage());
+        } catch (\Exception $e) {
+            throw new \Exception("An unexpected error occurred while saving preferences.");
+        }
     }
-}
 
     /**
      * Retrieve user preferences.
@@ -65,6 +65,10 @@ public function setPreferences(int $userId, array $data): void
      */
     protected function validatePreferences(array $data): void
     {
+        if (empty($data)) {
+            return;
+        }
+
         $validTopics = $this->preferencesRepo->getValidTopics();
         $validSources = $this->preferencesRepo->getValidSources();
         $validAuthors = $this->preferencesRepo->getValidAuthors();
