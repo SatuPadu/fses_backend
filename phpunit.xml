@@ -16,6 +16,9 @@
         <testsuite name="Auth">
             <directory suffix="Test.php">./app/Modules/Auth/Tests</directory>
         </testsuite>
+        <testsuite name="Articles">
+            <directory suffix="Test.php">./app/Modules/Articles/Tests</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

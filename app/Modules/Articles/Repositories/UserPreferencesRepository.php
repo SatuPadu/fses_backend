@@ -2,6 +2,7 @@
 
 namespace App\Modules\Articles\Repositories;
 
+use App\Modules\Articles\Models\Article;
 use App\Modules\Articles\Models\UserPreference;
 
 class UserPreferencesRepository
@@ -15,17 +16,14 @@ class UserPreferencesRepository
      */
     public function savePreferences(int $userId, array $data): void
     {
-        // Process topics
         if (!empty($data['topics'])) {
             $this->savePreferencesByType($userId, 'topics', $data['topics']);
         }
 
-        // Process sources
         if (!empty($data['sources'])) {
             $this->savePreferencesByType($userId, 'sources', $data['sources']);
         }
 
-        // Process authors
         if (!empty($data['authors'])) {
             $this->savePreferencesByType($userId, 'authors', $data['authors']);
         }
@@ -41,12 +39,10 @@ class UserPreferencesRepository
      */
     protected function savePreferencesByType(int $userId, string $type, array $values): void
     {
-        // Remove old preferences of this type
         UserPreference::where('user_id', $userId)
             ->where('type', $type)
             ->delete();
 
-        // Insert new preferences
         $preferences = array_map(function ($value) use ($userId, $type) {
             return [
                 'user_id' => $userId,
@@ -61,21 +57,6 @@ class UserPreferencesRepository
     }
 
     /**
-     * Get user preferences by type.
-     *
-     * @param int $userId
-     * @param string $type
-     * @return array
-     */
-    public function getPreferencesByType(int $userId, string $type): array
-    {
-        return UserPreference::where('user_id', $userId)
-            ->where('type', $type)
-            ->pluck('value')
-            ->toArray();
-    }
-
-    /**
      * Get all user preferences.
      *
      * @param int $userId
@@ -86,9 +67,37 @@ class UserPreferencesRepository
         return UserPreference::where('user_id', $userId)
             ->get(['type', 'value'])
             ->groupBy('type')
-            ->map(function ($items) {
-                return $items->pluck('value')->toArray();
-            })
+            ->map(fn($items) => $items->pluck('value')->toArray())
             ->toArray();
+    }
+
+    /**
+     * Get all valid topics from the database.
+     *
+     * @return array
+     */
+    public function getValidTopics(): array
+    {
+        return Article::distinct()->pluck('topic')->toArray();
+    }
+
+    /**
+     * Get all valid sources from the database.
+     *
+     * @return array
+     */
+    public function getValidSources(): array
+    {
+        return Article::distinct()->pluck('source_name')->toArray();
+    }
+
+    /**
+     * Get all valid authors from the database.
+     *
+     * @return array
+     */
+    public function getValidAuthors(): array
+    {
+        return Article::distinct()->pluck('author')->toArray();
     }
 }
