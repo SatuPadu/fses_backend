@@ -30,8 +30,8 @@ cd news-aggregator-test
 Build the Docker image and start the container using the following commands:
 
 ```sh
-docker build -t news-aggregator-app .
-docker run -d --name news-aggregator-container -p 8080:9000 news-aggregator-app
+docker build -t news-aggregator-test .
+docker run -d --name news-aggregator-container -p 8080:9000 news-aggregator-test
 ```
 
 This will build the Docker image and start a container exposing the application on port 8080.
@@ -93,8 +93,8 @@ The API documentation is generated using Swagger. You can access it via the foll
 http://localhost:8080/api/documentation
 ```
 
-Notes:
-- Ensure the .env file is correctly configured for database and other settings before running the application.
-- Modify the exposed ports in the docker run command if 8080 is already in use on your system.
+Notes
+	•	Ensure the .env file is correctly configured for database and other settings before running the application.
+	•	Modify the exposed ports in the docker run command if 8080 is already in use on your system.
 
 Feel free to reach out if you encounter any issues while setting up the project. 😊
