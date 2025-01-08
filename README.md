@@ -40,7 +40,7 @@ This will build the Docker image and start a container exposing the application 
 To interact with the application inside the Docker container, use:
 
 ```sh
-docker exec -it news-aggregator-container bash
+docker exec -it news_aggregator bash
 ```
 
 This will give you access to the container’s shell.
