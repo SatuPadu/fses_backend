@@ -56,7 +56,7 @@ class ArticleControllerTest extends TestCase
         ]);
 
         // Use array syntax for topics in the query string
-        $response = $this->getJson('/api/preferences/sources?topics[]=Technology&topics[]=Health');
+        $response = $this->getJson('/api/article/sources?topics[]=Technology&topics[]=Health');
 
         $response->assertStatus(200)
              ->assertJsonFragment([
@@ -82,7 +82,7 @@ class ArticleControllerTest extends TestCase
         // Authenticate the user
         $this->actingAs($user, 'sanctum');
     
-        $response = $this->getJson('/api/preferences/sources');
+        $response = $this->getJson('/api/article/sources');
 
         $response->assertStatus(400)
                  ->assertJson(['message' => 'Topics are required.']);
@@ -110,7 +110,7 @@ class ArticleControllerTest extends TestCase
         ]);
 
         // Use array syntax for topics and sources in the query string
-        $response = $this->getJson('/api/preferences/authors?topics[]=Technology&topics[]=Health&sources[]=TechCrunch&sources[]=Healthline');
+        $response = $this->getJson('/api/article/authors?topics[]=Technology&topics[]=Health&sources[]=TechCrunch&sources[]=Healthline');
 
         $response->assertStatus(200)
                 ->assertJsonFragment([
@@ -161,7 +161,7 @@ class ArticleControllerTest extends TestCase
             $mock->shouldReceive('getSourcesByTopics')->andThrow(new \RuntimeException('Unable to fetch sources. Please try again later.'));
         });
 
-        $response = $this->getJson('/api/preferences/sources?topics[]=Technology');
+        $response = $this->getJson('/api/article/sources?topics[]=Technology');
 
         $response->assertStatus(500)
                 ->assertJsonFragment([
@@ -179,7 +179,7 @@ class ArticleControllerTest extends TestCase
         $this->actingAs($user, 'sanctum');
 
         // Topics as string
-        $response = $this->getJson('/api/preferences/authors?topics=Technology&sources[]=TechCrunch');
+        $response = $this->getJson('/api/article/authors?topics=Technology&sources[]=TechCrunch');
 
         $response->assertStatus(400)
                 ->assertJsonFragment([
@@ -187,7 +187,7 @@ class ArticleControllerTest extends TestCase
                 ]);
 
         // Sources as string
-        $response = $this->getJson('/api/preferences/authors?topics[]=Technology&sources=TechCrunch');
+        $response = $this->getJson('/api/article/authors?topics[]=Technology&sources=TechCrunch');
 
         $response->assertStatus(400)
                 ->assertJsonFragment([
@@ -205,7 +205,7 @@ class ArticleControllerTest extends TestCase
         $this->actingAs($user, 'sanctum');
 
         // Missing topics
-        $response = $this->getJson('/api/preferences/authors?sources[]=TechCrunch');
+        $response = $this->getJson('/api/article/authors?sources[]=TechCrunch');
 
         $response->assertStatus(400)
                 ->assertJsonFragment([
@@ -213,7 +213,7 @@ class ArticleControllerTest extends TestCase
                 ]);
 
         // Missing sources
-        $response = $this->getJson('/api/preferences/authors?topics[]=Technology');
+        $response = $this->getJson('/api/article/authors?topics[]=Technology');
 
         $response->assertStatus(400)
                 ->assertJsonFragment([
@@ -235,7 +235,7 @@ class ArticleControllerTest extends TestCase
             $mock->shouldReceive('getAuthorsByTopicsAndSources')->andThrow(new \RuntimeException('Unable to fetch authors. Please try again later.'));
         });
 
-        $response = $this->getJson('/api/preferences/authors?topics[]=Technology&sources[]=TechCrunch');
+        $response = $this->getJson('/api/article/authors?topics[]=Technology&sources[]=TechCrunch');
 
         $response->assertStatus(500)
                 ->assertJsonFragment([
