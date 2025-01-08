@@ -38,9 +38,6 @@ COPY . .
 # Install application dependencies
 RUN composer install --optimize-autoloader --no-dev
 
-# Generate Swagger documentation
-RUN php artisan l5-swagger:generate
-
 # Set permissions for storage and cache
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache

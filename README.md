@@ -27,11 +27,10 @@ cd news-aggregator-test
 
 ## Build and Run Docker Containers
 
-Build the Docker image and start the container using the following commands:
+Setup your .env file and then build the Docker image and start the container using the following command:
 
 ```sh
-docker build -t news-aggregator-test .
-docker run -d --name news-aggregator-container -p 8080:9000 news-aggregator-test
+docker compose up
 ```
 
 This will build the Docker image and start a container exposing the application on port 8080.
@@ -87,7 +86,15 @@ This will execute all the test cases defined in the application.
 
 ## API Documentation
 
-The API documentation is generated using Swagger. You can access it via the following URL once the application is running:
+The API documentation is generated using Swagger. 
+
+Being inside the container run the following command:
+
+```bash
+php artisan l5-swagger:generate
+```
+
+Now you can access it via the following URL once the application is running:
 
 ```sh
 http://localhost:8080/api/documentation
