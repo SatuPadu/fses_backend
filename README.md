@@ -47,7 +47,7 @@ This will give you access to the container’s shell.
 
 ## Run Migrations and Seeders
 
-Inside the container, run the following commands to migrate and seed the database:
+Inside the container, run the following commands to install composer, migrate and seed the database:
 
 ```sh
 composer install
@@ -59,7 +59,7 @@ php artisan db:seed
 
 ### Run Scheduler
 
-The Laravel scheduler can be executed using the following command inside the container:
+The Laravel scheduler can be executed now. This will fetch the articles form The Guardian, News API and the New York TImes. Using the following command inside the container you can aggregate the articles. Setup your .env with the proper keys before you proceed:
 
 ```sh
 php artisan schedule:run
