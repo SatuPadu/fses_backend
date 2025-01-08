@@ -1,0 +1,233 @@
+<?php
+
+namespace Modules\Auth\Tests\Feature;
+
+use Tests\TestCase;
+use App\Modules\Auth\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Dotenv\Dotenv;
+
+class AuthFeatureTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->artisan('migrate:fresh');
+    }
+
+    use RefreshDatabase; // Rolls back database changes after each test
+
+    /** @test */
+    public function it_registers_a_user_with_valid_data()
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'John Doe',
+            'email' => 'john.doe@user.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+                'message' => 'User registered successfully.',
+            ])
+            ->assertJsonStructure([
+                'data' => [
+                    'user' => ['id', 'name', 'email'],
+                    'token',
+                ],
+            ]);
+
+        $this->assertDatabaseHas('users', ['email' => 'john.doe@user.com']);
+    }
+
+    /** @test */
+    public function it_returns_validation_error_for_missing_fields()
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'email' => 'john.doe@user.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Validation Error',
+            ])
+            ->assertJsonPath('data.name.0', 'The name field is required.')
+            ->assertJsonPath('data.password_confirmation.0', 'The password confirmation field is required.');
+    }
+
+    /** @test */
+    public function it_rejects_duplicate_email_registration()
+    {
+        User::factory()->create(['email' => 'john.doe@user.com']);
+
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'John Doe',
+            'email' => 'john.doe@user.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Validation Error',
+            ])
+            ->assertJsonPath('data.email.0', 'The email has already been taken.');
+    }
+
+    /** @test */
+    public function it_rejects_weak_passwords()
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'John Doe',
+            'email' => 'john.doe@user.com',
+            'password' => '12345',
+            'password_confirmation' => '12345',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Validation Error',
+            ])
+            ->assertJsonPath('data.password.0', 'The password field must be at least 8 characters.');
+    }
+
+    /** @test */
+    public function it_logs_in_a_user_with_valid_credentials()
+    {
+        $user = User::factory()->create([
+            'email' => 'john.doe@user.com',
+            'password' => bcrypt('password123'),
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'john.doe@user.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'User logged in successfully.',
+            ])
+            ->assertJsonStructure([
+                'data' => [
+                    'user' => ['id', 'name', 'email'],
+                    'token',
+                ],
+            ]);
+    }
+
+    /** @test */
+    public function it_rejects_login_with_invalid_password()
+    {
+        $user = User::factory()->create([
+            'email' => 'john.doe@user.com',
+            'password' => bcrypt('password123'),
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'john.doe@user.com',
+            'password' => 'wrongpassword',
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJson(['message' => 'Invalid credentials']);
+    }
+
+    /** @test */
+    public function it_rejects_login_for_nonexistent_user()
+    {
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'nonexistent@user.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJson(['message' => 'Invalid credentials']);
+    }
+
+    /** @test */
+    public function it_sends_reset_link_for_valid_email()
+    {
+        $user = User::factory()->create(['email' => 'john.doe@user.com']);
+
+        $response = $this->postJson('/api/password/reset-link', [
+            'email' => 'john.doe@user.com',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['message' => 'Password reset link sent.']);
+    }
+
+    /** @test */
+    public function it_rejects_invalid_email_for_password_reset_link()
+    {
+        $response = $this->postJson('/api/password/reset-link', [
+            'email' => 'nonexistent@user.com',
+        ]);
+
+        $response->assertStatus(404)
+            ->assertJson(['message' => 'Invalid email address.']);
+    }
+
+    /** @test */
+    public function it_resets_password_with_valid_data()
+    {
+        // Create a user
+        $user = User::factory()->create([
+            'email' => 'john.doe@user.com',
+            'password' => bcrypt('oldpassword123'), // Simulate the old password
+        ]);
+
+        // Simulate token generation and store it in the database
+        $token = 'valid-reset-token';
+        DB::table('password_resets')->insert([
+            'email' => $user->email,
+            'token' => Hash::make($token), // Store hashed token
+            'created_at' => now(),
+            'expires_at' => now()->addMinutes(config('auth.passwords.users.expire', 60)), // Include expiry
+        ]);
+
+        // Send password reset request
+        $response = $this->postJson('/api/password/reset', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'newpassword123',
+            'password_confirmation' => 'newpassword123',
+        ]);
+
+        // Assert response
+        $response->assertStatus(200)
+            ->assertJson(['message' => 'Password reset successful.']);
+
+        // Assert the password is updated in the database
+        $this->assertTrue(Hash::check('newpassword123', $user->fresh()->password));
+    }
+
+    /** @test */
+    public function it_rejects_invalid_reset_tokens()
+    {
+        // Create a user to simulate a valid email
+        $user = User::factory()->create(['email' => 'john.doe@user.com']);
+
+        // Send reset request with invalid token
+        $response = $this->postJson('/api/password/reset', [
+            'token' => 'invalid-token',
+            'email' => 'john.doe@user.com',
+            'password' => 'newpassword123',
+            'password_confirmation' => 'newpassword123',
+        ]);
+
+        // Assert response
+        $response->assertStatus(400)
+            ->assertJson(['message' => 'Invalid or expired token.']);
+    }
+}

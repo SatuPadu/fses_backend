@@ -85,12 +85,19 @@ class TopicService
     /**
      * Retrieve all topic names from the repository, with caching.
      *
+     * @param bool $initial
      * @return array
      * @throws \RuntimeException
      */
-    public function getTopics(): array
+    public function getTopics($initial = false): array
     {
         try {
+            if ($initial) {
+                // Directly fetch from the repository without caching
+                return $this->topicRepo->getAllTopicNames();
+            }
+
+            // Cache topics for subsequent calls
             return Cache::remember('topics:all', now()->addMinutes(60), function () {
                 return $this->topicRepo->getAllTopicNames();
             });

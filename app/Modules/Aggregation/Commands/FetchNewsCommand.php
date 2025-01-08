@@ -31,18 +31,17 @@ class FetchNewsCommand extends Command
 
     public function handle()
     {
-        // Cache topics to reduce repetitive DB calls
-        $topics = Cache::remember('news:fetch:topics', now()->addMinutes(30), function () {
-            return $this->topicService->getTopics();
-        });
+        // Fetch topics directly
+        $topics = $this->topicService->getTopics(true);
 
         if (empty($topics)) {
             $this->warn('No topics found. Fetching from The Guardian API...');
+            
+            // Fetch and store topics
             $this->topicService->fetchAndStoreTopics();
 
-            $topics = Cache::remember('news:fetch:topics', now()->addMinutes(30), function () {
-                return $this->topicService->getTopics();
-            });
+            // Re-fetch topics after storing
+            $topics = $this->topicService->getTopics();
 
             if (empty($topics)) {
                 $this->error('Failed to fetch topics.');

@@ -27,11 +27,11 @@ class NewsApiService
 
         foreach ($topics as $topic) {
             try {
-                $response = Http::timeout(10) // Set a timeout for the request
+                $response = Http::timeout(10)
                     ->get($this->apiUrl, [
                         'apiKey'    => $apiKey,
                         'qInTitle'  => $topic,
-                        'from'      => now()->subDays(30)->toDateString(), // Fetch articles from the last 30 days
+                        'from'      => now()->subDays(30)->toDateString(),
                         'sortBy'    => 'popularity',
                     ]);
 

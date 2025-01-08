@@ -6,6 +6,7 @@ use App\Modules\Auth\Models\User;
 use App\Modules\Auth\Repositories\UserRepository;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -27,23 +28,31 @@ class AuthService
     public function register(array $data): array
     {
         try {
-            if ($this->userRepository->existsByEmail($data['email'])) {
-                throw ValidationException::withMessages([
-                    'email' => ['A user with this email already exists.'],
-                ]);
+            if ($this->userRepository->findByEmail($data['email'])) {
+                throw new HttpException(
+                    409,
+                    'The email has already been taken.'
+                );
+            }
+            
+            $user = $this->userRepository->create($data);
+
+            if (!$user) {
+                throw new HttpException(500, 'Failed to create user.');
             }
 
-            $user = $this->userRepository->create($data);
             $token = $user->createToken($user->email)->plainTextToken;
+
+            if (!$token) {
+                throw new HttpException(500, 'Failed to create user token.');
+            }
 
             return [
                 'user' => $user,
                 'token' => $token,
             ];
-        } catch (ValidationException $e) {
-            throw $e;
-        } catch (\Exception $e) {
-            throw new HttpException(500, 'An unexpected error occurred during registration.', $e);
+        } catch (\Throwable $e) {
+            throw new HttpException($e->getCode(), $e->getMessage(), $e);
         }
     }
 

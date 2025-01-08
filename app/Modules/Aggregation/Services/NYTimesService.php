@@ -27,7 +27,7 @@ class NYTimesService
 
         foreach ($topics as $topic) {
             try {
-                $response = Http::timeout(10) // Add a timeout for the request
+                $response = Http::timeout(10)
                     ->get($this->apiUrl, [
                         'api-key' => $apiKey,
                         'sort'    => 'newest',
@@ -47,7 +47,7 @@ class NYTimesService
                 $articles = array_merge($articles, $this->mapArticles($docs, $topic));
 
             } catch (\RuntimeException $e) {
-                throw $e; // Rethrow to handle specific cases in calling code
+                throw $e;
             } catch (\Exception $e) {
                 throw new \RuntimeException("Unexpected error occurred while fetching articles for topic '{$topic}': " . $e->getMessage());
             }

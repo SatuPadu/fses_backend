@@ -8,16 +8,6 @@ use Illuminate\Support\Facades\Hash;
 
 class UserRepository
 {
-    /**
-     * Check if a user exists by email.
-     *
-     * @param string $email
-     * @return bool
-     */
-    public function existsByEmail(string $email): bool
-    {
-        return User::where('email', $email)->exists();
-    }
 
     /**
      * Create a new user.

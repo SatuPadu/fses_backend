@@ -34,7 +34,7 @@ class GuardianService
 
         foreach ($topics as $topic) {
             try {
-                $response = Http::timeout(10) // Set a timeout to avoid indefinite waits
+                $response = Http::timeout(10)
                     ->get(self::BASE_URL, [
                         'api-key'      => $apiKey,
                         'q'            => $topic,

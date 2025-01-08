@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd"
          bootstrap="vendor/autoload.php"
+         cacheResult="false"
+         failOnRisky="true"
+         failOnWarning="true"
+         executionOrder="depends,defects"
          colors="true"
+         stopOnFailure="false"
+         stopOnError="false"
+         stopOnRisky="false"
+         stopOnWarning="false"
 >
     <testsuites>
-        <testsuite name="Unit">
-            <directory>tests/Unit</directory>
-        </testsuite>
-        <testsuite name="Feature">
-            <directory>tests/Feature</directory>
+        <testsuite name="Auth">
+            <directory suffix="Test.php">./app/Modules/Auth/Tests</directory>
         </testsuite>
     </testsuites>
     <source>
@@ -18,15 +23,25 @@
         </include>
     </source>
     <php>
+        <!-- Explicitly set the testing environment -->
         <env name="APP_ENV" value="testing"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="CACHE_DRIVER" value="array"/>
-        <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
-        <!-- <env name="DB_DATABASE" value=":memory:"/> -->
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="PULSE_ENABLED" value="false"/>
+        <env name="APP_DEBUG" value="true"/>
+
+        <!-- Force Laravel to use .env.test -->
+        <env name="ENV_FILE" value=".env.test"/>
+
+        <!-- Database configuration for testing -->
+        <env name="DB_CONNECTION" value="testing_mysql"/>
+        <env name="DB_DATABASE" value="testing_db"/>
+        <env name="DB_USERNAME" value="test_user"/>
+        <env name="DB_PASSWORD" value="test_user"/>
+        <env name="DB_HOST" value="testing_db"/>
+        <env name="DB_PORT" value="3306"/>
+
+        <!-- Other optional test-specific environment variables -->
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="CACHE_DRIVER" value="array"/>
         <env name="SESSION_DRIVER" value="array"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="MAIL_MAILER" value="log"/>
     </php>
 </phpunit>

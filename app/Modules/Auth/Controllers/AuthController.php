@@ -10,7 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Auth\Services\AuthService;
 use App\Modules\Auth\Requests\LoginRequest;
 use App\Modules\Auth\Requests\RegisterRequest;
-
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -34,19 +34,13 @@ class AuthController extends Controller
      public function register(Request $request): JsonResponse
      {
          try {
-             // Validate the request data using RegisterRequest
              $validatedData = RegisterRequest::validate($request);
-     
-             // Pass the validated data to the AuthService for user registration
              $result = $this->authService->register($validatedData);
      
-             // Return a success response with the registration result
-             return $this->sendResponse($result, 'User registered successfully.');
+             return $this->sendCreatedResponse($result, 'User registered successfully.');
          } catch (\Illuminate\Validation\ValidationException $e) {
-             // Handle validation errors and return a structured error response
-             return $this->sendValidationError($e->errors());
+             return $e->getResponse() ?: $this->sendValidationError($e->errors());
          } catch (\Exception $e) {
-             // Handle unexpected errors and log them for debugging     
              return $this->sendError(
                  'An unexpected error occurred. Please try again later.',
                  ['error' => $e->getMessage()],
@@ -64,23 +58,24 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         try {
-            // Retrieve validated data from the LoginRequest
+            // Validate the login request data
             $validatedData = LoginRequest::validate($request);
-    
-            // Pass the validated data to the AuthService for authentication
+
+            // Attempt to authenticate the user
             $result = $this->authService->login($validatedData);
-    
+
+            // If authentication fails, return an unauthorized error
             if (!$result) {
                 return $this->sendUnauthorizedError('Invalid credentials.');
             }
-    
-            // Return a success response with the login result
+
+            // If successful, return a success response
             return $this->sendResponse($result, 'User logged in successfully.');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Handle validation errors and return a structured error response
-            return $this->sendValidationError($e->errors());
+            // Return unauthorized response for validation errors
+            return $this->sendUnauthorizedError("Invalid credentials");
         } catch (\Exception $e) {
-            // Handle unexpected errors and return a generic error response
+            // Handle unexpected exceptions and log the error
             return $this->sendError(
                 'An unexpected error occurred. Please try again later.',
                 ['error' => $e->getMessage()],

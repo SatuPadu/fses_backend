@@ -34,7 +34,18 @@ class RegisterRequest
 
         // Throw a ValidationException if validation fails
         if ($validator->fails()) {
-            throw new ValidationException($validator);
+            // Ensure the error response includes password_confirmation if password doesn't match
+            if (!isset($request->password_confirmation)) {
+                $validator->errors()->add('password_confirmation', 'The password confirmation field is required.');
+            } elseif ($request->password !== $request->password_confirmation) {
+                $validator->errors()->add('password_confirmation', 'The password confirmation does not match.');
+            }
+
+            throw new ValidationException($validator, response()->json([
+                'success' => false,
+                'message' => 'Validation Error',
+                'data' => $validator->errors(),
+            ], 422));
         }
 
         // Return the validated data

@@ -93,6 +93,26 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'testing_mysql' => [
+        'driver' => 'mysql',
+        'url' => env('DATABASE_URL'),
+        'host' => env('TEST_DB_HOST', '127.0.0.1'),
+        'port' => env('DB_PORT', '3306'), // If you need a different port for testing, change it
+        'database' => env('TEST_DB_DATABASE', 'testing_db'),
+        'username' => env('TEST_DB_USERNAME', 'test_user'),
+        'password' => env('TEST_DB_PASSWORD', 'test_user'),
+        'unix_socket' => env('DB_SOCKET', ''),
+        'charset' => 'utf8mb4',
+        'collation' => 'utf8mb4_unicode_ci',
+        'prefix' => '',
+        'prefix_indexes' => true,
+        'strict' => true,
+        'engine' => null,
+        'options' => extension_loaded('pdo_mysql') ? array_filter([
+            PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+        ]) : [],
+    ],
+
     ],
 
     /*

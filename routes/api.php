@@ -27,7 +27,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::prefix('password')->group(function () {
-    Route::post('reset-link', [PasswordResetController::class, 'forgotPassword'])
+    Route::post('reset-link', [PasswordResetController::class, 'sendResetLink'])
         ->middleware('throttle:5,1');
 
     Route::post('reset', [PasswordResetController::class, 'resetPassword'])

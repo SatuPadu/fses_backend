@@ -9,6 +9,7 @@ use App\Modules\Auth\Requests\ForgotPasswordRequest;
 use App\Modules\Auth\Requests\ResetPasswordRequest;
 use Illuminate\Http\JsonResponse;
 use Exception;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class PasswordResetController extends Controller
 {
@@ -25,7 +26,7 @@ class PasswordResetController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
-    public function forgotPassword(Request $request): JsonResponse
+    public function sendResetLink(Request $request): JsonResponse
     {
         try {
             $validatedData = ForgotPasswordRequest::validate($request);
@@ -34,9 +35,9 @@ class PasswordResetController extends Controller
             return $this->sendResponse($token, 'Password reset link sent.');
         } catch (Exception $e) {
             return $this->sendError(
-                'Failed to send password reset link.',
+                'Invalid email address.',
                 ['error' => $e->getMessage()],
-                JsonResponse::HTTP_INTERNAL_SERVER_ERROR
+                JsonResponse::HTTP_NOT_FOUND
             );
         }
     }
@@ -54,11 +55,17 @@ class PasswordResetController extends Controller
             $this->passwordResetService->resetPassword($validatedData);
 
             return $this->sendResponse(null, 'Password reset successful.');
-        } catch (Exception $e) {
+        } catch (HttpException $e) {
             return $this->sendError(
-                'Failed to reset password.',
+                $e->getMessage(),
+                [],
+                $e->getStatusCode()
+            );
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'An unexpected error occurred.',
                 ['error' => $e->getMessage()],
-                JsonResponse::HTTP_INTERNAL_SERVER_ERROR
+                500
             );
         }
     }

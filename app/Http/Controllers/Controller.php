@@ -33,6 +33,25 @@ class Controller extends BaseController
     }
 
     /**
+     * Send a created response.
+     *
+     * @param mixed  $result
+     * @param string $message
+     * @return JsonResponse
+     */
+    public function sendCreatedResponse($result, string $message): JsonResponse
+    {
+        
+        $response = [
+            'success' => true,
+            'data'    => SanitizeResponseHelper::sanitizeResponse($result),
+            'message' => $message,
+        ];
+
+        return response()->json($response, \Illuminate\Http\Response::HTTP_CREATED);
+    }
+
+    /**
      * Send an error response.
      *
      * @param string $error
