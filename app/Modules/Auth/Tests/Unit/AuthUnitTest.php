@@ -1,7 +1,6 @@
 <?php
 
-namespace Modules\Auth\Tests\Unit;
-
+namespace App\Modules\Auth\Tests\Unit;
 use Mockery;
 use Tests\TestCase;
 use App\Modules\Auth\Models\User;

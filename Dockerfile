@@ -1,4 +1,4 @@
-# Dockerfile
+# Base Image
 FROM php:8.1-fpm
 
 # Set the working directory
@@ -13,11 +13,21 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     git \
-    redis-tools
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
-RUN pecl install redis && docker-php-ext-enable redis
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd
+
+# Install Redis PHP extension
+RUN pecl install redis \
+    && docker-php-ext-enable redis
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -25,11 +35,18 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Copy application code
 COPY . .
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage
+# Install application dependencies
+RUN composer install --optimize-autoloader --no-dev
 
-# Expose the port
+# Generate Swagger documentation
+RUN php artisan l5-swagger:generate
+
+# Set permissions for storage and cache
+RUN chown -R www-data:www-data /var/www \
+    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
+# Expose the application port
 EXPOSE 9000
 
+# Run PHP-FPM server
 CMD ["php-fpm"]

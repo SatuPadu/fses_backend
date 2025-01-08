@@ -10,7 +10,9 @@ use App\Modules\Articles\Controllers\UserPreferencesController;
 
 
 Route::get('/status', function () {
-    return "up and running";
+    return response()->json([
+        'status' => 'up',
+    ]);
 });
 
 Route::prefix('auth')->group(function () {

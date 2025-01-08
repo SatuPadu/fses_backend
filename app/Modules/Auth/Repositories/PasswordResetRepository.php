@@ -17,7 +17,7 @@ class PasswordResetRepository
 
     public function findByToken(string $email, string $token): ?PasswordReset
     {
-        $resetRecord = PasswordReset::where('email', $email)->first();
+        $resetRecord = PasswordReset::where('email', $email)->orderBy("created_at", "DESC")->first();
 
         if ($resetRecord && Hash::check($token, $resetRecord->token)) {
             return $resetRecord;

@@ -9,6 +9,21 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @OA\Info(
+ *     title="News Aggegation API",
+ *     version="1.0.0",
+ *     description="API documentation for the application.",
+ *     @OA\Contact(
+ *         email="support@user.com"
+ *     )
+ * )
+ * 
+ * @OA\Server(
+ *     url=L5_SWAGGER_CONST_HOST,
+ *     description="API Server"
+ * )
+ */
 class Controller extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests;
