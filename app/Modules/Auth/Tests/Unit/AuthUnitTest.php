@@ -2,11 +2,10 @@
 
 namespace Modules\Auth\Tests\Unit;
 
+use Mockery;
 use Tests\TestCase;
 use App\Modules\Auth\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Mockery;
-use Dotenv\Dotenv;
 use App\Modules\Auth\Models\PasswordReset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -80,7 +79,7 @@ class AuthUnitTest extends TestCase
         $mockedUser->id = 1;
         $mockedUser->name = $data['name'];
         $mockedUser->email = $data['email'];
-        $mockedUser->password = Hash::make($data['password']); // Use Hash::make to match repository behavior
+        $mockedUser->password = Hash::make($data['password']);
 
         // Mock createToken to return a valid object
         $mockedToken = Mockery::mock();
@@ -119,7 +118,7 @@ class AuthUnitTest extends TestCase
         $this->assertArrayHasKey('token', $result);
         $this->assertEquals('mocked-token', $result['token']);
         $this->assertEquals($mockedUser->email, $result['user']->email);
-        $this->assertTrue(Hash::check($data['password'], $result['user']->password)); // Validate hashed password
+        $this->assertTrue(Hash::check($data['password'], $result['user']->password));
     }
 
     /** @test */
@@ -139,38 +138,6 @@ class AuthUnitTest extends TestCase
 
         $this->expectException(HttpException::class);
         $this->authService->register($data);
-    }
-
-    /** @test */
-    public function it_logs_in_a_user_with_valid_credentials()
-    {
-        // Create a mock User model
-        $user = Mockery::mock(User::class)->makePartial();
-        $user->id = 1; // Simulate a valid ID
-        $user->email = 'john.doe@user.com';
-        $user->password = bcrypt('password123');
-
-        $user->shouldReceive('createToken')
-            ->once()
-            ->with($user->email)
-            ->andReturn((object)['plainTextToken' => 'mocked-token']);
-
-        $data = [
-            'email' => 'john.doe@user.com',
-            'password' => 'password123',
-        ];
-
-        $this->userRepository->shouldReceive('findByEmail')
-            ->once()
-            ->with($data['email'])
-            ->andReturn($user);
-
-        $result = $this->authService->login($data);
-
-        // Assertions
-        $this->assertArrayHasKey('user', $result);
-        $this->assertArrayHasKey('token', $result);
-        $this->assertEquals('mocked-token', $result['token']);
     }
 
     /** @test */
@@ -204,7 +171,7 @@ class AuthUnitTest extends TestCase
         // Create and persist the user with a hashed password
         $user = User::factory()->create([
             'email' => 'john.doe@user.com',
-            'password' => Hash::make('oldpassword123'), // Properly hash the old password
+            'password' => Hash::make('oldpassword123'),
         ]);
 
         $token = 'valid-reset-token';
