@@ -42,11 +42,14 @@ Route::prefix('article')->group(function () {
     Route::get('/topics', [TopicController::class, 'getTopics']);
     Route::get('detail/{id}', [ArticleController::class, 'show']);
 
+    // Protected Routes (require authentication)
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('sources', [ArticleController::class, 'getSourcesByTopics']);
+        Route::get('authors', [ArticleController::class, 'getAuthorsByTopicsAndSources']);
+    });
 });
 
 Route::middleware('auth:sanctum')->prefix('preferences')->group(function () {
     Route::get('/', [UserPreferencesController::class, 'getPreferences']);
     Route::post('set-preferences', [UserPreferencesController::class, 'setPreferences']);
-    Route::get('sources', [ArticleController::class, 'getSourcesByTopics']);
-    Route::get('authors', [ArticleController::class, 'getAuthorsByTopicsAndSources']);
 });
