@@ -1,26 +1,29 @@
-# News Aggregator Test
+# FSES Backend
 
-This project is a Laravel-based news aggregator application that provides a REST API for managing articles, sources, and user preferences.
+This project is a Laravel-based backend system that provides a REST API for the FSES system. A moduler architecture (CSR) has been maintained in this app.
+
 
 ## Table of Contents
-- [Clone the Repository](#clone-the-repository)
-- [Setup with Docker](#setup-with-docker)
-- [Build and Run Docker Containers](#build-and-run-docker-containers)
-- [Access the Container](#access-the-container)
-- [Run Migrations and Seeders](#run-migrations-and-seeders)
-- [Run Scheduler and Queue Worker](#run-scheduler-and-queue-worker)
+- [FSES Backend](#fses-backend)
+  - [Table of Contents](#table-of-contents)
+  - [Clone the Repository](#clone-the-repository)
+  - [Setup with Docker](#setup-with-docker)
+  - [Build and Run Docker Containers](#build-and-run-docker-containers)
+  - [Access the Container](#access-the-container)
+  - [Run Migrations and Seeders](#run-migrations-and-seeders)
+  - [Run Scheduler and Queue Worker](#run-scheduler-and-queue-worker)
     - [Run Scheduler](#run-scheduler)
     - [Run Queue Worker](#run-queue-worker)
-- [Run Tests](#run-tests)
-- [API Documentation](#api-documentation)
+  - [Run Tests](#run-tests)
+  - [API Documentation](#api-documentation)
 
 ## Clone the Repository
 
 Clone the repository from GitHub:
 
 ```sh
-git clone https://github.com/Khairulbashar010/news-aggregator-test.git
-cd news-aggregator-test
+git clone https://github.com/SatuPadu/fses_backend.git
+cd fses_backend
 ```
 
 ## Setup with Docker
@@ -40,7 +43,7 @@ This will build the Docker image and start a container exposing the application 
 To interact with the application inside the Docker container, use:
 
 ```sh
-docker exec -it news_aggregator bash
+docker exec -it fses_backend bash
 ```
 
 This will give you access to the container’s shell.

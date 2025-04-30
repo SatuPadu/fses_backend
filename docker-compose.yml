@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: news_aggregator
-    container_name: ${APP_CONTAINER_NAME:-news_aggregator}
+    image: fses_backend
+    container_name: ${APP_CONTAINER_NAME:-fses_backend}
     working_dir: /var/www
     volumes:
       - .:/var/www
