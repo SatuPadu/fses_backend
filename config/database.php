@@ -47,7 +47,7 @@ return [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '3306'),
+            'port' => env('DB_PORT', '3307'),
             'database' => env('DB_DATABASE', 'forge'),
             'username' => env('DB_USERNAME', 'forge'),
             'password' => env('DB_PASSWORD', ''),
@@ -81,7 +81,7 @@ return [
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', 'localhost'),
+            'host' => env('DB_HOST', 'db'),
             'port' => env('DB_PORT', '1433'),
             'database' => env('DB_DATABASE', 'forge'),
             'username' => env('DB_USERNAME', 'forge'),
@@ -97,7 +97,7 @@ return [
         'driver' => 'mysql',
         'url' => env('DATABASE_URL'),
         'host' => env('TEST_DB_HOST', '127.0.0.1'),
-        'port' => env('DB_PORT', '3306'), // If you need a different port for testing, change it
+        'port' => env('DB_PORT', '3307'), // If you need a different port for testing, change it
         'database' => env('TEST_DB_DATABASE', 'testing_db'),
         'username' => env('TEST_DB_USERNAME', 'test_user'),
         'password' => env('TEST_DB_PASSWORD', 'test_user'),

@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     git \
     redis-tools \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Install PHP extensions
 RUN docker-php-ext-install \
@@ -38,9 +39,15 @@ COPY . .
 # Install application dependencies
 RUN composer install --optimize-autoloader --no-dev
 
-# Set permissions for storage and cache
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Set ownership for the entire application directory
+RUN chown -R www-data:www-data /var/www
+
+# Set specific permissions for writable directories
+RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
+# Optionally, set more restrictive permissions for other directories and files
+RUN find /var/www -type d -not -path '/var/www/storage' -not -path '/var/www/bootstrap/cache' -exec chmod 755 {} \;
+RUN find /var/www -type f -not -path '/var/www/storage/*' -not -path '/var/www/bootstrap/cache/*' -exec chmod 644 {} \;
 
 # Expose the application port
 EXPOSE 9000

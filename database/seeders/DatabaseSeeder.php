@@ -11,12 +11,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // \App\Modules\Auth\Models\User::factory(10)->create();
-
-        \App\Modules\Auth\Models\User::factory()->create([
-            'name' => 'John Doe',
-            'email' => 'john.doe@user.com',
-            'password' => bcrypt('password123'),
-        ]);
+        // Run seeders in the correct order to maintain dependencies
+        // 1. First create roles
+        $this->call(RoleTableSeeder::class);
+        
+        // 2. Then create users
+        $this->call(UserTableSeeder::class);
+        
+        // 3. Finally, establish role relationships
+        $this->call(UserRoleTableSeeder::class);
+        
+        // Add any other seeders below this line
+        // $this->call(OtherSeeder::class);
     }
 }

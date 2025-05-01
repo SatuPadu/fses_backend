@@ -2,87 +2,91 @@
 
 namespace App\Modules\Auth\Models;
 
-use Laravel\Sanctum\HasApiTokens;
-use App\Modules\Articles\Models\UserPreference;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'password'];
+    protected $fillable = [
+        'staff_number',
+        'name',
+        'email',
+        'password',
+        'department',
+        'lecturer_id',
+        'last_login',
+        'password_reset_token',
+        'password_reset_expiry',
+        'is_active',
+        'is_password_updated',
+    ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = [
+        'password',
+        'password_reset_token',
+    ];
+
+    protected $casts = [
+        'last_login' => 'datetime',
+        'password_reset_expiry' => 'datetime',
+        'is_active' => 'boolean',
+        'is_password_updated' => 'boolean',
+    ];
 
     /**
-     * Get all user preferences.
+     * Get the identifier that will be stored in the subject claim of the JWT.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return mixed
      */
-    public function preferences()
+    public function getJWTIdentifier()
     {
-        return $this->hasMany(UserPreference::class, 'user_id');
+        return $this->getKey();
     }
 
     /**
-     * Get user topic preferences.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function topicPreferences()
-    {
-        return $this->preferences()->ofType('topics');
-    }
-
-    /**
-     * Get user source preferences.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function sourcePreferences()
-    {
-        return $this->preferences()->ofType('sources');
-    }
-
-    /**
-     * Get user author preferences.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function authorPreferences()
-    {
-        return $this->preferences()->ofType('authors');
-    }
-
-    /**
-     * Get user topic preferences as an array.
+     * Return a key value array, containing any custom claims to be added to the JWT.
      *
      * @return array
      */
-    public function getTopicPreferencesArray(): array
+    public function getJWTCustomClaims()
     {
-        return $this->topicPreferences()->pluck('value')->toArray();
+        return [];
     }
 
-    /**
-     * Get user source preferences as an array.
-     *
-     * @return array
-     */
-    public function getSourcePreferencesArray(): array
+    // Make sure the password field works with JWT Auth
+    public function getAuthPassword()
     {
-        return $this->sourcePreferences()->pluck('value')->toArray();
+        return $this->password;
     }
 
-    /**
-     * Get user author preferences as an array.
-     *
-     * @return array
-     */
-    public function getAuthorPreferencesArray(): array
-    {
-        return $this->authorPreferences()->pluck('value')->toArray();
-    }
+    // Uncomment and update relationships as needed
+    // public function lecturer()
+    // {
+    //     return $this->belongsTo(Lecturer::class, 'lecturer_id', 'id');
+    // }
+
+    // public function roles()
+    // {
+    //     return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id')
+    //                 ->withTimestamps();
+    // }
+
+    // public function nominatedEvaluations()
+    // {
+    //     return $this->hasMany(StudentEvaluation::class, 'nominated_by', 'id');
+    // }
+
+    // public function lockedEvaluations()
+    // {
+    //     return $this->hasMany(StudentEvaluation::class, 'locked_by', 'id');
+    // }
+
+    // public function logs()
+    // {
+    //     return $this->hasMany(Log::class, 'user_id', 'id');
+    // }
 }

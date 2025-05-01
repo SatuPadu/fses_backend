@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use App\Enums\Department;
 
 return new class extends Migration
 {
@@ -13,18 +14,18 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('staff_number')->unique();
             $table->string('name');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->rememberToken();
+            $table->enum('department', Department::all());
+            $table->foreignId('lecturer_id')->nullable()->constrained('lecturers', 'id');
+            $table->dateTime('last_login')->nullable();
+            $table->string('password_reset_token')->nullable();
+            $table->dateTime('password_reset_expiry')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_password_updated')->default(false);
             $table->timestamps();
-        });
-
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
         });
     }
 
@@ -34,6 +35,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
     }
 };
