@@ -34,38 +34,22 @@ class AuthController extends Controller
         try {
             $validatedData = LoginRequest::validate($request);
             
-            $identity = $validatedData['identity'];
-            
-            // Check if the identity is an email
-            $isEmail = filter_var($identity, FILTER_VALIDATE_EMAIL);
-            $field = $isEmail ? 'email' : 'staff_number';
-            
-            // Add proper quotes for non-numeric values in logs
-            $credentials = [
-                $field => $identity,
+            $result = $this->authService->login([
+                'identity' => $validatedData['identity'],
                 'password' => $validatedData['password']
-            ];
+            ]);
             
-            if (!$token = Auth::attempt($credentials)) {
+            if (!$result) {
                 return $this->sendUnauthorizedError('Invalid credentials.');
             }
             
-            // Update last login timestamp
-            $user = Auth::user();
-            $this->authService->updateLastLogin($user);
-            
-            return $this->sendResponse([
-                'access_token' => $token,
-                'token_type' => 'bearer',
-                'expires_in' => Auth::factory()->getTTL() * 60,
-                'user' => $user
-            ], 'User logged in successfully.');
+            return $this->sendResponse($result, 'User logged in successfully.');
             
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->sendUnauthorizedError("Invalid credentials");
         } catch (\Exception $e) {
             return $this->sendError(
-                'Database connection error. Please try again later.',
+                'An unexpected error occurred. Please try again later.',
                 ['error' => $e->getMessage()],
                 500
             );
