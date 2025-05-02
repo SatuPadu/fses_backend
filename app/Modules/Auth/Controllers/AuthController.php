@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Modules\Auth\Services\AuthService;
 use App\Modules\Auth\Requests\LoginRequest;
+use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 /**

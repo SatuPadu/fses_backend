@@ -25,27 +25,6 @@ class LoginRequest
             'password' => 'required|string|min:7',
         ]);
 
-        // Add custom validation logic
-        $validator->after(function ($validator) use ($request) {
-            $identity = $request->input('identity');
-            $isEmail = filter_var($identity, FILTER_VALIDATE_EMAIL);
-            
-            // Check for invalid identity domains if identity is an identity
-            if ($isEmail && self::isInvalidEmailDomain($identity)) {
-                $validator->errors()->add('identity', 'The identity domain is not allowed.');
-            }
-            
-            // Check if account is active
-            if (!self::isActiveAccount($identity, $isEmail)) {
-                $validator->errors()->add('identity', 'This account has been deactivated. Please contact support.');
-            }
-            
-            // Check for too many login attempts (optional)
-            // if (self::hasTooManyLoginAttempts($request)) {
-            //     $validator->errors()->add('identity', 'Too many login attempts. Please try again later.');
-            // }
-        });
-
         // Throw a ValidationException if validation fails
         if ($validator->fails()) {
             throw new ValidationException($validator);
@@ -89,7 +68,7 @@ class LoginRequest
         // Query user based on whether identity is identity or staff_number
         $query = User::query();
         if ($isEmail) {
-            $query->where('identity', $identity);
+            $query->where('email', $identity);
         } else {
             $query->where('staff_number', $identity);
         }
@@ -113,8 +92,6 @@ class LoginRequest
      */
     protected static function hasTooManyLoginAttempts(Request $request): bool
     {
-        // Implement rate limiting logic if needed
-        // This is just a placeholder for implementing your own rate limiting
         
         return false;
     }
