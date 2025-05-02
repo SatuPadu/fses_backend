@@ -1,18 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PasswordResetController;
-
-Route::get('/test-db', function () {
-    try {
-        DB::connection()->getPdo();
-        echo "Connected successfully to: " . DB::connection()->getDatabaseName();
-    } catch (\Exception $e) {
-        die("Could not connect to the database. Error: " . $e->getMessage());
-    }
-});
 
 // API Health Check
 Route::get('/status', function () {
