@@ -19,10 +19,10 @@ class LoginRequest
      */
     public static function validate(Request $request): array
     {
-        // Perform the validation for identity (either email or staff_number)
+        // Perform the validation for identity (either identity or staff_number)
         $validator = Validator::make($request->all(), [
             'identity' => 'required|string',
-            'password' => 'required|string|min:8',
+            'password' => 'required|string|min:7',
         ]);
 
         // Add custom validation logic
@@ -30,9 +30,9 @@ class LoginRequest
             $identity = $request->input('identity');
             $isEmail = filter_var($identity, FILTER_VALIDATE_EMAIL);
             
-            // Check for invalid email domains if identity is an email
+            // Check for invalid identity domains if identity is an identity
             if ($isEmail && self::isInvalidEmailDomain($identity)) {
-                $validator->errors()->add('identity', 'The email domain is not allowed.');
+                $validator->errors()->add('identity', 'The identity domain is not allowed.');
             }
             
             // Check if account is active
@@ -56,19 +56,19 @@ class LoginRequest
     }
 
     /**
-     * Check if the email domain is invalid.
+     * Check if the identity domain is invalid.
      *
-     * @param string|null $email
+     * @param string|null $identity
      * @return bool
      */
-    protected static function isInvalidEmailDomain(?string $email): bool
+    protected static function isInvalidEmailDomain(?string $identity): bool
     {
-        if (!$email) {
+        if (!$identity) {
             return false;
         }
         
         $invalidDomains = ['example.com', 'test.com'];
-        $emailDomain = substr(strrchr($email, '@'), 1);
+        $emailDomain = substr(strrchr($identity, '@'), 1);
 
         return in_array($emailDomain, $invalidDomains);
     }
@@ -76,8 +76,8 @@ class LoginRequest
     /**
      * Check if the user account is active.
      *
-     * @param string|null $identity Either email or staff_number
-     * @param bool $isEmail Whether the identity is an email
+     * @param string|null $identity Either identity or staff_number
+     * @param bool $isEmail Whether the identity is an identity
      * @return bool
      */
     protected static function isActiveAccount(?string $identity, bool $isEmail): bool
@@ -86,10 +86,10 @@ class LoginRequest
             return false;
         }
         
-        // Query user based on whether identity is email or staff_number
+        // Query user based on whether identity is identity or staff_number
         $query = User::query();
         if ($isEmail) {
-            $query->where('email', $identity);
+            $query->where('identity', $identity);
         } else {
             $query->where('staff_number', $identity);
         }

@@ -9,16 +9,13 @@ use App\Modules\Auth\Repositories\UserRepository;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+
 
 class AuthService
 {
     protected $userRepository;
     
-    /**
-     * Create a new service instance.
-     *
-     * @param UserRepository $userRepository
-     */
     public function __construct(UserRepository $userRepository)
     {
         $this->userRepository = $userRepository;
@@ -32,40 +29,105 @@ class AuthService
      */
     public function login(array $credentials)
     {
-        // Allow login with email or staff number
-        $field = filter_var($credentials['identity'], FILTER_VALIDATE_EMAIL) ? 'email' : 'staff_number';
+        // Determine if the identity is an email or staff number
+        $field = filter_var($credentials['identity'], FILTER_VALIDATE_EMAIL) 
+            ? 'email' 
+            : 'staff_number';
         
+        // Detailed logging for debugging
+        Log::info('Login Attempt', [
+            'identity' => $credentials['identity'],
+            'field' => $field
+        ]);
+
+        // Find the user
+        $user = User::where("email", $credentials['identity'])->orWhere("staff_number", $credentials['identity'])->first();
+
+        // Log user lookup
+        if (!$user) {
+            Log::warning('User Not Found', [
+                'identity' => $credentials['identity'],
+                'field' => $field
+            ]);
+            return false;
+        }
+
+        // Log user details for debugging
+        Log::info('User Found', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'staff_number' => $user->staff_number,
+            'is_active' => $user->is_active
+        ]);
+
+        // Check if the user is active
+        if (!$user->is_active) {
+            Log::warning('Inactive User Attempted Login', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
+            return false;
+        }
+
+        // Manually verify password
+        $passwordCheck = Hash::check($credentials['password'], $user->password);
+
+        // Log password verification
+        Log::info('Password Verification', [
+            'user_id' => $user->id,
+            'password_check' => $passwordCheck
+        ]);
+
+        // If password is incorrect
+        if (!$passwordCheck) {
+            Log::warning('Invalid Password', [
+                'user_id' => $user->id,
+                'provided_password' => $credentials['password'],
+                'stored_password_hash' => $user->password
+            ]);
+            return false;
+        }
+
+        // Attempt authentication
         $loginData = [
-            $field => $credentials['identity'],
+            'email' => $user->email,
             'password' => $credentials['password']
         ];
         
-        if (!Auth::attempt($loginData)) {
+        try {
+            if (!Auth::attempt($loginData)) {
+                Log::warning('Auth Attempt Failed', [
+                    'user_id' => $user->id,
+                    'login_data' => $loginData
+                ]);
+                return false;
+            }
+
+            // Generate token
+            $token = JWTAuth::fromUser($user);
+            
+            // Update last login
+            $this->updateLastLogin($user);
+
+            // Get user roles
+            $roles = $this->userRepository->getUserRoles($user);
+
+            return [
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => Auth::factory()->getTTL() * 60,
+                'user' => $user,
+                'roles' => $roles
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Login Exception', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return false;
         }
-
-        $user = Auth::user();
-        
-        // Check if the user is active
-        if (!$user->is_active) {
-            Auth::logout();
-            return false;
-        }
-        
-        $this->updateLastLogin($user);
-
-        $token = JWTAuth::fromUser($user);
-        
-        // Get user roles
-        $roles = $this->userRepository->getUserRoles($user);
-
-        return [
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => Auth::factory()->getTTL() * 60,
-            'user' => $user,
-            'roles' => $roles
-        ];
     }
 
     /**
@@ -82,7 +144,6 @@ class AuthService
             'staff_number' => $userData['staff_number'],
             'department' => $userData['department'],
             'password' => $userData['password'],
-            'is_password_updated' => true,
             'is_active' => true,
             'roles' => $userData['roles'] ?? [],
         ]);

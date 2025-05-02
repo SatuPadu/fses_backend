@@ -45,9 +45,6 @@ RUN chown -R www-data:www-data /var/www
 # Set specific permissions for writable directories
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Optionally, set more restrictive permissions for other directories and files
-RUN find /var/www -type d -not -path '/var/www/storage' -not -path '/var/www/bootstrap/cache' -exec chmod 755 {} \;
-RUN find /var/www -type f -not -path '/var/www/storage/*' -not -path '/var/www/bootstrap/cache/*' -exec chmod 644 {} \;
 
 # Expose the application port
 EXPOSE 9000

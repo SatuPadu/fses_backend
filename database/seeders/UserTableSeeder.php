@@ -24,7 +24,7 @@ class UserTableSeeder extends Seeder
         $users = [
             [
                 'name' => 'John Smith',
-                'email' => 'officeassistant@example.com',
+                'email' => 'officeassistant@utm.com',
                 'staff_number' => 'OA12345',
                 'department' => $departments[0] ?? 'SEAT',
                 'password' => Hash::make('OA12345'),
@@ -33,7 +33,7 @@ class UserTableSeeder extends Seeder
             ],
             [
                 'name' => 'Sarah Johnson',
-                'email' => 'supervisor@example.com',
+                'email' => 'supervisor@utm.com',
                 'staff_number' => 'SV54321',
                 'department' => $departments[1] ?? 'II',
                 'password' => Hash::make('SV54321'),
@@ -42,7 +42,7 @@ class UserTableSeeder extends Seeder
             ],
             [
                 'name' => 'Michael Brown',
-                'email' => 'coordinator@example.com',
+                'email' => 'coordinator@utm.com',
                 'staff_number' => 'PC78901',
                 'department' => $departments[2] ?? 'BIHG',
                 'password' => Hash::make('PC78901'),
@@ -51,7 +51,7 @@ class UserTableSeeder extends Seeder
             ],
             [
                 'name' => 'Dr. Emily Davis',
-                'email' => 'pgam@example.com',
+                'email' => 'pgam@utm.com',
                 'staff_number' => 'PG98765',
                 'department' => $departments[3] ?? 'CAI',
                 'password' => Hash::make('PG98765'),
