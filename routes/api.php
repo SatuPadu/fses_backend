@@ -19,7 +19,7 @@ Route::prefix('auth')->group(function () {
     // Protected routes (require JWT authentication)
     Route::middleware('jwt.verify')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
-        Route::get('user', [AuthController::class, 'user']);
+        Route::get('auth-user', [AuthController::class, 'user']);
         Route::post('refresh', [AuthController::class, 'refresh']);
     });
 });

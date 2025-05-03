@@ -32,7 +32,14 @@ class AuthService
         $user = User::where('email', $credentials['identity'])
             ->orWhere('staff_number', $credentials['identity'])
             ->first();
+
         
+        
+        // Verify password
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            throw new \Exception('Invalid credentials provided.');
+        }
+
         // Generate token
         $token = JWTAuth::fromUser($user);
         
