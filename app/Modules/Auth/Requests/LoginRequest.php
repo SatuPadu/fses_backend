@@ -22,7 +22,7 @@ class LoginRequest
         // Perform the validation for identity (either identity or staff_number)
         $validator = Validator::make($request->all(), [
             'identity' => 'required|string',
-            'password' => 'required|string|min:7',
+            'password' => 'required|string|min:8',
         ]);
 
         // Throw a ValidationException if validation fails
