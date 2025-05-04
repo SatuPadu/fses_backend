@@ -21,22 +21,22 @@ class UserRoleTableSeeder extends Seeder
         $userRoles = [
             // Office Assistant
             [
-                'email' => 'officeassistant@example.com',
+                'email' => 'officeassistant@utm.com',
                 'role_name' => UserRole::OFFICE_ASSISTANT,
             ],
             // Supervisor
             [
-                'email' => 'supervisor@example.com',
+                'email' => 'supervisor@utm.com',
                 'role_name' => UserRole::SUPERVISOR,
             ],
             // Program Coordinator
             [
-                'email' => 'coordinator@example.com',
+                'email' => 'coordinator@utm.com',
                 'role_name' => UserRole::PROGRAM_COORDINATOR,
             ],
             // PGAM
             [
-                'email' => 'pgam@example.com',
+                'email' => 'pgam@utm.com',
                 'role_name' => UserRole::PGAM,
             ],
         ];

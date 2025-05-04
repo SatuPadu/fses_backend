@@ -4,9 +4,11 @@ namespace App\Modules\Auth\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 use App\Modules\Auth\Services\PasswordResetService;
 use App\Modules\Auth\Requests\ForgotPasswordRequest;
 use App\Modules\Auth\Requests\ResetPasswordRequest;
+use App\Modules\Auth\Requests\SetNewPasswordRequest;
 use Illuminate\Http\JsonResponse;
 use Exception;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -26,51 +28,6 @@ class PasswordResetController extends Controller
         $this->passwordResetService = $passwordResetService;
     }
 
-    /**
-     * @OA\Post(
-     *     path="/password/reset-link",
-     *     tags={"Password Reset"},
-     *     summary="Send password reset link",
-     *     description="Send a password reset link to the user's email.",
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="email", type="string", example="user@user.com")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Password reset link sent.",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Password reset link sent."),
-     *             @OA\Property(property="data", type="object", @OA\Property(property="token", type="string"))
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Invalid email address.",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Invalid email address."),
-     *             @OA\Property(property="data", type="object", @OA\Property(property="error", type="string"))
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Unexpected error.",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="An unexpected error occurred."),
-     *             @OA\Property(property="data", type="object", @OA\Property(property="error", type="string"))
-     *         )
-     *     )
-     * )
-     */
     public function sendResetLink(Request $request): JsonResponse
     {
         try {
@@ -87,54 +44,6 @@ class PasswordResetController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/password/reset",
-     *     tags={"Password Reset"},
-     *     summary="Reset password",
-     *     description="Reset the user's password using the reset token.",
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="token", type="string", example="reset_token"),
-     *             @OA\Property(property="email", type="string", example="user@user.com"),
-     *             @OA\Property(property="password", type="string", example="new_password"),
-     *             @OA\Property(property="password_confirmation", type="string", example="new_password")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Password reset successful.",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Password reset successful."),
-     *             @OA\Property(property="data", type="null")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Invalid token or email.",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Invalid token or email."),
-     *             @OA\Property(property="data", type="object", @OA\Property(property="error", type="string"))
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Unexpected error.",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="An unexpected error occurred."),
-     *             @OA\Property(property="data", type="object", @OA\Property(property="error", type="string"))
-     *         )
-     *     )
-     * )
-     */
     public function resetPassword(Request $request): JsonResponse
     {
         try {
@@ -154,6 +63,33 @@ class PasswordResetController extends Controller
                 ['error' => $e->getMessage()],
                 500
             );
+        }
+    }
+
+    /**
+     * Set a new password for the authenticated user.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function setNewPassword(Request $request): JsonResponse
+    {
+        try {
+            // Validate the request
+            $validatedData = SetNewPasswordRequest::validate($request);
+            
+            // Get the authenticated user
+            $user = Auth::user();
+            
+            // Use the password reset service to set the new password
+            $result = $this->passwordResetService->setNewPassword($user, $validatedData['password']);
+            
+            return $this->sendResponse($result, 'Password updated successfully.');
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->sendUnauthorizedError($e->getMessage());
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to set new password.', ['error' => $e->getMessage()], 500);
         }
     }
 }

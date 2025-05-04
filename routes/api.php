@@ -18,9 +18,16 @@ Route::prefix('auth')->group(function () {
 
     // Protected routes (require JWT authentication)
     Route::middleware('jwt.verify')->group(function () {
+        // Routes that are accessible even if password not updated
+        Route::post('set-new-password', [PasswordResetController::class, 'setNewPassword']);
         Route::post('logout', [AuthController::class, 'logout']);
-        Route::get('auth-user', [AuthController::class, 'user']);
-        Route::post('refresh', [AuthController::class, 'refresh']);
+        
+        // Routes that require password to be updated
+        Route::middleware('password.updated')->group(function () {
+            Route::get('auth-user', [AuthController::class, 'user']);
+            Route::post('refresh', [AuthController::class, 'refresh']);
+            // Add other protected routes here
+        });
     });
 });
 

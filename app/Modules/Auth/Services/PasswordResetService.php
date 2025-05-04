@@ -5,6 +5,7 @@ namespace App\Modules\Auth\Services;
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\PasswordResetMail;
@@ -95,5 +96,33 @@ class PasswordResetService
 
         // Delete reset token to prevent reuse
         $this->passwordResetRepo->delete($resetRecord);
+    }
+
+    /**
+     * Set a new password for an authenticated user.
+     *
+     * @param mixed $user
+     * @param string $newPassword
+     * @return array
+     */
+    public function setNewPassword($user, string $newPassword): array
+    {
+        // Check if the new password matches the old password
+        if (Hash::check($newPassword, $user->password)) {
+            throw new HttpException(422, 'The new password cannot be the same as the old password.');
+        }
+
+        // Update user's password and mark as updated
+        $user->update([
+            'password' => Hash::make($newPassword),
+            'is_password_updated' => true
+        ]);
+
+        // Generate a new JWT token
+        $token = Auth::login($user);
+
+        return [
+            'access_token' => $token,
+        ];
     }
 }

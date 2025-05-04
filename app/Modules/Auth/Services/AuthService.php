@@ -8,8 +8,6 @@ use App\Modules\Auth\Models\User;
 use App\Modules\Auth\Repositories\UserRepository;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 
 class AuthService
 {
