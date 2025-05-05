@@ -11,9 +11,6 @@ This project is a Laravel-based backend system that provides a REST API for the 
   - [Build and Run Docker Containers](#build-and-run-docker-containers)
   - [Access the Container](#access-the-container)
   - [Run Migrations and Seeders](#run-migrations-and-seeders)
-  - [Run Scheduler and Queue Worker](#run-scheduler-and-queue-worker)
-    - [Run Scheduler](#run-scheduler)
-    - [Run Queue Worker](#run-queue-worker)
   - [Run Tests](#run-tests)
   - [API Documentation](#api-documentation)
 
@@ -56,26 +53,6 @@ Inside the container, run the following commands to install composer, migrate an
 composer install
 php artisan migrate
 php artisan db:seed
-```
-
-## Run Scheduler and Queue Worker
-
-### Run Scheduler
-
-The Laravel scheduler can be executed now. This will fetch the articles form The Guardian, News API and the New York TImes. Using the following command inside the container you can aggregate the articles. Setup your .env with the proper keys before you proceed:
-
-```sh
-php artisan schedule:run
-```
-
-To run it continuously, consider setting up a cron job.
-
-### Run Queue Worker
-
-Run the queue worker to process background jobs:
-
-```sh
-php artisan queue:work
 ```
 
 ## Run Tests
