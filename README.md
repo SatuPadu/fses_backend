@@ -53,6 +53,7 @@ This will give you access to the container’s shell.
 Inside the container, run the following commands to install composer, migrate and seed the database:
 
 ```sh
+composer install
 php artisan migrate
 php artisan db:seed
 ```

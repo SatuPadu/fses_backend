@@ -36,12 +36,15 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Copy application code
 COPY . .
 
-# Install composer dependencies
-RUN composer install
+# Install application dependencies
+RUN composer install --optimize-autoloader --no-dev
 
-# Set correct permissions
+# Set ownership for the entire application directory
 RUN chown -R www-data:www-data /var/www
+
+# Set specific permissions for writable directories
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
 
 # Expose the application port
 EXPOSE 9000
