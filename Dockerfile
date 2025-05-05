@@ -33,21 +33,14 @@ RUN pecl install redis \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy composer files first
-COPY composer.json composer.lock ./
-
-# Install dependencies without running scripts
-RUN composer install --no-scripts --no-autoloader
-
 # Copy application code
 COPY . .
 
-# Generate optimized autoloader
-RUN composer dump-autoload --optimize
-# Set ownership for the entire application directory
-RUN chown -R www-data:www-data /var/www
+# Install composer dependencies
+RUN composer install
 
-# Set specific permissions for writable directories
+# Set correct permissions
+RUN chown -R www-data:www-data /var/www
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
 # Expose the application port
