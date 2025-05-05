@@ -33,18 +33,17 @@ RUN pecl install redis \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy composer files first to leverage Docker cache
+# Copy composer files first
 COPY composer.json composer.lock ./
 
-# Install dependencies
-RUN composer install --optimize-autoloader --no-dev
+# Install dependencies without running scripts
+RUN composer install --no-scripts --no-autoloader
 
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
 # Generate optimized autoloader
-RUN composer dump-autoload --optimize --no-interaction
-
+RUN composer dump-autoload --optimize
 # Set ownership for the entire application directory
 RUN chown -R www-data:www-data /var/www
 
