@@ -32,13 +32,13 @@ return [
     ],
 
     'newsapi' => [
-        'key' => env('NEWSAPI_API_KEY'),
+        'key' => env('NEWSAPI_API_KEY', 'dasdasdasd'),
     ],
     'guardian' => [
-        'key' => env('GUARDIAN_API_KEY'),
+        'key' => env('GUARDIAN_API_KEY', 'dasdasdasd'),
     ],
     'nytimes' => [
-        'key' => env('NYT_API_KEY'),
+        'key' => env('NYT_API_KEY', 'dasdasdasd'),
     ],
 
 ];
