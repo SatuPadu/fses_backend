@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\UserManagement\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PasswordResetController;
@@ -39,3 +40,9 @@ Route::prefix('password')->group(function () {
     Route::post('reset', [PasswordResetController::class, 'resetPassword'])
         ->middleware('throttle:5,1');
 });
+
+// User Management Routes
+Route::get('/lecturers', [UserManagementController::class, 'index']);
+Route::post('/lecturers', [UserManagementController::class, 'store']);
+Route::put('/lecturers/{id}', [UserManagementController::class, 'update']);
+Route::delete('/lecturers/{id}', [UserManagementController::class, 'destroy']);
