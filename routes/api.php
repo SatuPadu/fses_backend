@@ -1,8 +1,10 @@
+use App\Modules\Student\Controllers\StudentController;
 <?php
 
 use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PasswordResetController;
+use App\Modules\Student\Controllers\StudentController;
 
 // API Health Check
 Route::get('/status', function () {
@@ -38,4 +40,19 @@ Route::prefix('password')->group(function () {
 
     Route::post('reset', [PasswordResetController::class, 'resetPassword'])
         ->middleware('throttle:5,1');
+});
+
+
+// Student Management Routes (Protected by JWT middleware)
+Route::prefix('students')->middleware('jwt.verify')->group(function () {
+    Route::get('/', [StudentController::class, 'index']);
+    Route::post('/', [StudentController::class, 'store']);
+    Route::post('/import', [StudentController::class, 'importExcel']);
+});
+
+Route::fallback(function () {
+    return response()->json([
+        'success' => false,
+        'message' => 'Endpoint not found.',
+    ], 404);
 });
