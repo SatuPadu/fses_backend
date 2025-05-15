@@ -45,4 +45,5 @@ Route::prefix('password')->group(function () {
 Route::get('/lecturers', [UserManagementController::class, 'index']);
 Route::post('/lecturers', [UserManagementController::class, 'store']);
 Route::put('/lecturers/{id}', [UserManagementController::class, 'update']);
-Route::delete('/lecturers/{id}', [UserManagementController::class, 'destroy']);
+Route::delete('/lecturers/{id}', [UserManagementController::class, 'destroyLecturer']);
+//Route::delete('/users/{id}', [UserManagementController::class, 'destroyUser']);

@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
-class UserRequest
+class UserCreateRequest
 {
     /**
      * Validate the user/lecturer request data from the Request object.
@@ -21,17 +21,13 @@ class UserRequest
      *
      * @throws ValidationException
      */
-    public static function validate(Request $request, $id = null) : array
+    public static function validate(Request $request): array
     {
-        if($id) {
-            User::findOrFail($id);
-        }
-
         $validator = Validator::make($request->all(), [
-            'staff_number' => ['required', Rule::unique('users')->ignore($id)],
+            'staff_number' => ['required', 'unique:lecturers'],
             'name' => ['required'],
             'title' => ['required', Rule::in(LecturerTitle::all())],
-            'email' => ['required', 'unique:users'],
+            'email' => ['required', 'unique:lecturers'],
             'department' => ['required', Rule::in(Department::all())],
             'external_institution' => ['nullable'],
             'specialization' => ['nullable'],

@@ -2,12 +2,13 @@
 
 namespace App\Modules\UserManagement\Controllers;
 
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Modules\UserManagement\Models\Lecturer;
-use App\Modules\UserManagement\Requests\UserRequest;
 use App\Modules\UserManagement\Services\UserService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use App\Modules\UserManagement\Requests\UserCreateRequest;
+use App\Modules\UserManagement\Requests\UserUpdateRequest;
 
 /**
  * @OA\Tag(
@@ -47,7 +48,7 @@ class UserManagementController extends Controller
     public function store(Request $request): JsonResponse 
     {
         try {
-            $validated_request = UserRequest::validate($request);
+            $validated_request = UserCreateRequest::validate($request);
             $result = $this->userService->newLecturer($validated_request);
             return $this->sendResponse($result, 'User added successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -56,7 +57,7 @@ class UserManagementController extends Controller
             return $this->sendError(
                 'An unexpected error occurred. Please try again later.',
                 ['error' => $e->getMessage()],
-                500
+                $e->getCode()
             );
         }
     }
@@ -72,9 +73,9 @@ class UserManagementController extends Controller
     {
         // Update lecturer info
         try {
-            $validated_request = UserRequest::validate($request, $id);
-            $this->userService->updateLecturer($id, $validated_request);
-            return $this->sendResponse(null, 'Lecturer info updated successfully!');
+            $validated_request = UserUpdateRequest::validate($request, $id);
+            $result = $this->userService->updateLecturer($id, $validated_request);
+            return $this->sendResponse($result, 'Lecturer info updated successfully!');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->sendError(
                 'Lecturer does not exist',
@@ -87,18 +88,18 @@ class UserManagementController extends Controller
             return $this->sendError(
                 'An unexpected error occurred. Please try again later.',
                 ['error' => $e->getMessage()],
-                500
+                $e->getCode()
             );
         }
     }
 
     /**
-     * Soft deletes the lecturer/user in the database.
+     * Soft deletes the lecturer in the database.
      * 
      * @param  int  $id
      * @return JsonResponse
      */
-    public function destroy($id): JsonResponse 
+    public function destroyLecturer($id): JsonResponse 
     {
         try {
             $this->userService->deleteLecturer($id);
@@ -107,6 +108,32 @@ class UserManagementController extends Controller
             return $this->sendError(
                 'Lecturer does not exist', 
                 ['error' => 'Lecturer does not exist'],
+                404
+            );
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                500
+            );
+        }
+    }
+
+    /**
+     * Soft deletes the user in the database.
+     * 
+     * @param mixed $id
+     * @return JsonResponse
+     */
+    public function destroyUser($id): JsonResponse 
+    {
+        try {
+            $this->userService->deleteUser($id);
+            return $this->sendResponse(null, 'User info deleted successfuly!');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->sendError(
+                'User does not exist', 
+                ['error' => 'User does not exist'],
                 404
             );
         } catch (\Exception $e) {

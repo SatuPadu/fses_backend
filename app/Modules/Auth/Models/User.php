@@ -2,11 +2,12 @@
 
 namespace App\Modules\Auth\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Modules\UserManagement\Models\Lecturer;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -65,10 +66,10 @@ class User extends Authenticatable implements JWTSubject
     }
 
     // Uncomment and update relationships as needed
-    // public function lecturer()
-    // {
-    //     return $this->belongsTo(Lecturer::class, 'lecturer_id', 'id');
-    // }
+    public function lecturer()
+    {
+        return $this->belongsTo(Lecturer::class, 'lecturer_id', 'id');
+    }
 
     // public function roles()
     // {

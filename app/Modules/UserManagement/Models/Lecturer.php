@@ -21,6 +21,8 @@ class Lecturer extends Model
         'specialization',
         'email',
         'phone',
+        'user_id',
+        'staff_number',
     ];
 
     public function user(): HasOne 
