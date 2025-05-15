@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Modules\Student\Imports;
-
+\Log::info('🚚 Importing row', $row);
 use App\Modules\Student\Models\Student;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;

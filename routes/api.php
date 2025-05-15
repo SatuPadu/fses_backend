@@ -56,3 +56,8 @@ Route::fallback(function () {
         'message' => 'Endpoint not found.',
     ], 404);
 });
+
+Route::post('/test-import', function (\Illuminate\Http\Request $request) {
+    \Log::info('📦 Test Import File:', [$request->file('file')]);
+    return response()->json(['ok' => true]);
+});
