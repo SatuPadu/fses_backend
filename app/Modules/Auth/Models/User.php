@@ -2,14 +2,16 @@
 
 namespace App\Modules\Auth\Models;
 
+use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Modules\UserManagement\Models\Lecturer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'staff_number',
@@ -64,10 +66,10 @@ class User extends Authenticatable implements JWTSubject
     }
 
     // Uncomment and update relationships as needed
-    // public function lecturer()
-    // {
-    //     return $this->belongsTo(Lecturer::class, 'lecturer_id', 'id');
-    // }
+    public function lecturer()
+    {
+        return $this->belongsTo(Lecturer::class, 'lecturer_id', 'id');
+    }
 
     // public function roles()
     // {
