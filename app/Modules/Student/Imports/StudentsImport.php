@@ -24,18 +24,25 @@ class StudentsImport implements ToModel, WithHeadingRow
      */
     public function model(array $row)
     {
+        \Log::info(' Importing student: ' . ($row['student_name'] ?? 'UNKNOWN'));
+
+        if (!\App\Models\Lecturer::where('id', $row['main_supervisor_id'] ?? null)->exists()) {
+            \Log::warning(' Skipping row: Supervisor not found', $row);
+            return null;
+        }
+
         return new Student([
-            'student_name' => $row['student_name'] ?? '',
-            'name' => $row['name'] ?? '',
-            'email' => $row['email'] ?? '',
+            'student_name' => trim($row['student_name'] ?? ''),
+            'name' => trim($row['name'] ?? ''),
+            'email' => trim($row['email'] ?? ''),
             'program_id' => $row['program_id'] ?? null,
-            'current_semester' => $row['current_semester'] ?? '',
-            'department' => $row['department'] ?? '',
+            'current_semester' => trim($row['current_semester'] ?? ''),
+            'department' => trim($row['department'] ?? ''),
             'main_supervisor_id' => $row['main_supervisor_id'] ?? null,
-            'evaluation_type' => $row['evaluation_type'] ?? '',
-            'research_title' => $row['research_title'] ?? null,
+            'evaluation_type' => trim($row['evaluation_type'] ?? ''),
+            'research_title' => trim($row['research_title'] ?? ''),
             'is_postponed' => isset($row['is_postponed']) ? (bool)$row['is_postponed'] : false,
-            'postponement_reason' => $row['postponement_reason'] ?? null,
+            'postponement_reason' => trim($row['postponement_reason'] ?? ''),
         ]);
     }
 }

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PasswordResetController;
 use App\Modules\Student\Controllers\StudentController;
+use App\Modules\Program\Controllers\ProgramController;
 
 // API Health Check
 Route::get('/status', function () {
@@ -14,8 +15,7 @@ Route::get('/status', function () {
 });
 
 // Authentication Routes
-Route::prefix('auth')->group(function () {
-    // Public routes
+Route::prefix('auth')->group(function () {    // Public routes
     Route::post('login', [AuthController::class, 'login']);
 
     // Protected routes (require JWT authentication)
@@ -43,11 +43,20 @@ Route::prefix('password')->group(function () {
 });
 
 
+
 // Student Management Routes (Protected by JWT middleware)
 Route::prefix('students')->middleware('jwt.verify')->group(function () {
     Route::get('/', [StudentController::class, 'index']);
     Route::post('/', [StudentController::class, 'store']);
     Route::post('/import', [StudentController::class, 'importExcel']);
+});
+
+Route::prefix('programs')->group(function () {
+    Route::get('/', [ProgramController::class, 'index']);
+    Route::post('/', [ProgramController::class, 'store']);
+    Route::get('{id}', [ProgramController::class, 'show']);
+    Route::put('{id}', [ProgramController::class, 'update']);
+    Route::delete('{id}', [ProgramController::class, 'destroy']);
 });
 
 Route::fallback(function () {

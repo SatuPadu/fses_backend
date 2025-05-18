@@ -4,18 +4,12 @@ namespace App\Modules\Student\Services;
 
 use App\Modules\Student\Models\Student;
 use App\Modules\Student\Imports\StudentsImport;
+use App\Modules\Lecturer\Models\Lecturer;
 use Illuminate\Http\UploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Modules\Student\Repositories\StudentRepository;
 
 class StudentService
 {
-    private StudentRepository $studentRepository;
-
-    public function __construct(StudentRepository $studentRepository)
-    {
-        $this->studentRepository = $studentRepository;
-    }
 
     /**
      * Retrieve all students, optionally filtered by program and user role.
@@ -65,7 +59,13 @@ class StudentService
      */
     public function createStudent(array $data): Student
     {
-        return $this->studentRepository->create($data);
+        if (Student::where('student_id', $data['student_id'])->exists()) {
+            throw new \Exception('Student ID already exists.');
+        }
+
+        Lecturer::findOrFail($data['main_supervisor_id']);
+
+        return Student::create($data);
     }
 
     /**
