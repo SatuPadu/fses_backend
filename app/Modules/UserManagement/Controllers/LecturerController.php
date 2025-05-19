@@ -2,30 +2,31 @@
 
 namespace App\Modules\UserManagement\Controllers;
 
+use App\Modules\UserManagement\Requests\LecturerCreateRequest;
+use App\Modules\UserManagement\Requests\LecturerGetRequest;
+use App\Modules\UserManagement\Requests\LecturerUpdateRequest;
+use App\Modules\UserManagement\Services\LecturerService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
-use App\Modules\UserManagement\Models\Lecturer;
-use App\Modules\UserManagement\Services\UserService;
-use App\Modules\UserManagement\Requests\UserCreateRequest;
-use App\Modules\UserManagement\Requests\UserUpdateRequest;
+use Illuminate\Http\Response;
 
 /**
  * @OA\Tag(
  *     name="User Management",
- *     description="API Endpoints related to User Management"
+ *     description="API Endpoints related to User Management involving Lecturers"
  * )
  */
-class UserManagementController extends Controller
+class LecturerController extends Controller
 {
-    protected $userService;
+    protected $lecturerService;
 
     /**
-     * Inject the userService dependency.
+     * Inject the lecturerService dependency.
      */
-    public function __construct(UserService $userService) 
+    public function __construct(LecturerService $lecturerService) 
     {
-        $this->userService = $userService;
+        $this->lecturerService = $lecturerService;
     }
 
     /**
@@ -33,14 +34,18 @@ class UserManagementController extends Controller
      * 
      * @return JsonResponse
      */
-    public function index(): JsonResponse 
+    public function index(Request $request): JsonResponse 
     {
-        $users = $this->userService->getLecturers();
-        return $this->sendResponse($users, '');
+        $validated_request = LecturerGetRequest::validate($request);
+        $lecturers = $this->lecturerService->getLecturers(
+            $validated_request['per_page'] ?? 10,
+            $validated_request
+        );
+        return $this->sendResponse($lecturers, 'Lecturer list retrieved successfully!');
     }
 
     /**
-     * Store a newly created lecturer/user in the database.
+     * Store a newly created lecturer in the database.
      * 
      * @param  Request  $request
      * @return JsonResponse
@@ -48,22 +53,22 @@ class UserManagementController extends Controller
     public function store(Request $request): JsonResponse 
     {
         try {
-            $validated_request = UserCreateRequest::validate($request);
-            $result = $this->userService->newLecturer($validated_request);
-            return $this->sendResponse($result, 'User added successfully!');
+            $validated_request = LecturerCreateRequest::validate($request);
+            $result = $this->lecturerService->newLecturer($validated_request);
+            return $this->sendCreatedResponse($result, 'Lecturer added successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->sendValidationError($e->errors());
         } catch (\Exception $e) {
             return $this->sendError(
                 'An unexpected error occurred. Please try again later.',
                 ['error' => $e->getMessage()],
-                $e->getCode()
+                Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
     }
 
     /**
-     * Update the lecturer/user in storage.
+     * Update the lecturer in storage.
      * 
      * @param  Request  $request
      * @param  int  $id
@@ -71,16 +76,15 @@ class UserManagementController extends Controller
      */
     public function update(Request $request, $id): JsonResponse 
     {
-        // Update lecturer info
         try {
-            $validated_request = UserUpdateRequest::validate($request, $id);
-            $result = $this->userService->updateLecturer($id, $validated_request);
+            $validated_request = LecturerUpdateRequest::validate($request, $id);
+            $result = $this->lecturerService->updateLecturer($id, $validated_request);
             return $this->sendResponse($result, 'Lecturer info updated successfully!');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->sendError(
                 'Lecturer does not exist',
                 ['error' => 'Lecturer does not exist'],
-                404
+                Response::HTTP_NOT_FOUND
             );
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->sendValidationError($e->errors());
@@ -88,7 +92,7 @@ class UserManagementController extends Controller
             return $this->sendError(
                 'An unexpected error occurred. Please try again later.',
                 ['error' => $e->getMessage()],
-                $e->getCode()
+                Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
     }
@@ -99,48 +103,22 @@ class UserManagementController extends Controller
      * @param  int  $id
      * @return JsonResponse
      */
-    public function destroyLecturer($id): JsonResponse 
+    public function destroy($id): JsonResponse 
     {
         try {
-            $this->userService->deleteLecturer($id);
+            $this->lecturerService->deleteLecturer($id);
             return $this->sendResponse(null, 'Lecturer info deleted successfuly!');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->sendError(
                 'Lecturer does not exist', 
                 ['error' => 'Lecturer does not exist'],
-                404
+                Response::HTTP_NOT_FOUND
             );
         } catch (\Exception $e) {
             return $this->sendError(
                 'An unexpected error occurred. Please try again later.',
                 ['error' => $e->getMessage()],
-                500
-            );
-        }
-    }
-
-    /**
-     * Soft deletes the user in the database.
-     * 
-     * @param mixed $id
-     * @return JsonResponse
-     */
-    public function destroyUser($id): JsonResponse 
-    {
-        try {
-            $this->userService->deleteUser($id);
-            return $this->sendResponse(null, 'User info deleted successfuly!');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->sendError(
-                'User does not exist', 
-                ['error' => 'User does not exist'],
-                404
-            );
-        } catch (\Exception $e) {
-            return $this->sendError(
-                'An unexpected error occurred. Please try again later.',
-                ['error' => $e->getMessage()],
-                500
+                Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
     }

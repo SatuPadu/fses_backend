@@ -1,9 +1,10 @@
 <?php
 
-use App\Modules\UserManagement\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PasswordResetController;
+use App\Modules\UserManagement\Controllers\UserController;
+use App\Modules\UserManagement\Controllers\LecturerController;
 
 // API Health Check
 Route::get('/status', function () {
@@ -41,9 +42,18 @@ Route::prefix('password')->group(function () {
         ->middleware('throttle:5,1');
 });
 
-// User Management Routes
-Route::get('/lecturers', [UserManagementController::class, 'index']);
-Route::post('/lecturers', [UserManagementController::class, 'store']);
-Route::put('/lecturers/{id}', [UserManagementController::class, 'update']);
-Route::delete('/lecturers/{id}', [UserManagementController::class, 'destroyLecturer']);
-Route::delete('/users/{id}', [UserManagementController::class, 'destroyUser']);
+// User Management Routes - Lecturers
+Route::prefix('lecturers')->group(function () {
+    Route::get('/', [LecturerController::class, 'index']);
+    Route::post('/', [LecturerController::class, 'store']);
+    Route::put('/{id}', [LecturerController::class, 'update']);
+    Route::delete('/{id}', [LecturerController::class, 'destroy']);
+});
+
+// User Management Routes - Users
+Route::prefix('users')->group(function () {
+    Route::get('/', [UserController::class, 'index']);
+    Route::post('/', [UserController::class, 'store']);
+    Route::put('/{id}', [UserController::class, 'update']);
+    Route::delete('/{id}', [UserController::class, 'destroy']);
+});

@@ -9,10 +9,10 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
-class UserUpdateRequest
+class LecturerUpdateRequest
 {
     /**
-     * Validate the user request data from the Request object.
+     * Validate the lecturer request data from the Request object.
      *
      * @param Request $request
      * @param int $id = null
@@ -25,11 +25,11 @@ class UserUpdateRequest
         $validator = Validator::make($request->all(), [
             'name' => ['required'],
             'title' => ['required', Rule::in(LecturerTitle::all())],
-            'email' => ['required', Rule::unique('users')->ignore($id)],
+            'email' => ['required', Rule::unique('lecturers')->ignore($id)],
             'department' => ['required', Rule::in(Department::all())],
-            'phone' => ['nullable'],
             'external_institution' => ['nullable'],
-            'specialization' => ['nullable']
+            'specialization' => ['nullable'],
+            'phone' => ['nullable']
         ]);
 
         if($validator->fails()) {

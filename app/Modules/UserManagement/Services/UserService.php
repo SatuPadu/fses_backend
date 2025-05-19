@@ -12,28 +12,60 @@ use App\Modules\UserManagement\Models\Lecturer;
 class UserService 
 {
     /**
-     * Returns all non-deleted Lecturer models from the database.
+     * Returns all non-deleted User models from the database.
      * 
-     * @return \Illuminate\Database\Eloquent\Collection<int, Lecturer>
+     * @param int $numPerPage
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
-    public function getLecturers()
+    public function getUsers(int $numPerPage, array $request)
     {
-        return Lecturer::with('user')->get();
+        // Start a new query builder instance
+        $query = User::with('lecturer');
+
+        // Apply filters to query builder
+        if (isset($request['name'])) {
+            $query->where('name', 'like', '%' . $request['name'] . '%');
+        }
+
+        if (isset($request['department'])) {
+            $query->where('department', '=', $request['department']);
+        }
+
+        if (isset($request['staff_number'])) {
+            $query->where('staff_number', 'like', '%' . $request['staff_number'] . '%');
+        }
+
+        if (isset($request['email'])) {
+            $query->where('email', 'like', '%' . $request['email'] . '%');
+        }
+
+        // Execute final query and returns results
+        return $query->paginate($numPerPage);
     }
 
     /**
-     * Adds new Lecturer/User model into the database.
+     * Adds new User model into the database.
      * 
      * @param array $request
      * @throws \Exception
-     * @return array{lecturer_id: mixed}
+     * @return User
      */
-    public function newLecturer(array $request): Lecturer 
+    public function newUser(array $request): User 
     {
-        try{
-            
+        try {
+            // Start database transaction
             DB::beginTransaction();
 
+            // Create new user entry
+            $user = User::create([
+                'staff_number' => $request['staff_number'],
+                'name' => $request['name'],
+                'email' => $request['email'],
+                'password' => Hash::make( $request['staff_number']),
+                'department' => $request['department'],
+            ]);
+
+            // Create corresponding lecturer entry
             $lecturer = Lecturer::create([
                 'name' => $request['name'],
                 'email' => $request['email'],
@@ -46,95 +78,74 @@ class UserService
                 'specialization' => $request['specialization'],
             ]);
 
-            if($lecturer->is_from_fai) {
-                $user = User::create([
-                    'staff_number' => $lecturer->staff_number,
-                    'name' => $request['name'],
-                    'email' => $request['email'],
-                    'password' => Hash::make( $lecturer->staff_number),
-                    'department' => $request['department'],
-                ]);
-                $lecturer->user_id = $user->id;
-                $lecturer->save();
-            }
+            // Link lecturer and user entries
+            $user->lecturer_id = $lecturer->id;
+            $user->save();
+            $lecturer->user_id = $user->id;
+            $lecturer->save();
 
+            // Commit changes to database and return user instance
             DB::commit();
-            return $lecturer;
+            return $user;
 
         } catch(Exception $e) {
+            // If exception occurs, reverse made changes
             DB::rollBack();
             throw $e;
         }
     }
 
     /**
-     * Updates Lecturer/User model info in the database.
+     * Updates User model info in the database.
      * 
      * @param int $id
      * @param array $request
      * @throws \Exception
-     * @return void
+     * @return User
      */
-    public function updateLecturer($id, array $request): Lecturer 
+    public function updateUser($id, array $request): User 
     {
         try {
+            // Start database transaction
             DB::beginTransaction();
 
-            $lecturer = Lecturer::find($id);
-            
-            if (!$lecturer) {
+            // Find user in database
+            $user = User::find($id);
+            if (!$user) {
                 throw new Exception('Lecturer not found', 404);
             }
+            
+            // Update user info
+            $user->name = $request['name'];
+            $user->department = $request['department'];
+            $user->email = $request['email'];
+            $user->save();
+
+            // Update corresponding lecturer entry info
+            if(isset($user->lecturer_id)) {
+                $lecturer = Lecturer::find($user->lecturer_id);
+                
                 $lecturer->name = $request['name'];
-                $lecturer->title = $request['title'];
-                $lecturer->department = $request['department'];
-                $lecturer->external_institution = $request['external_institution'];
-                $lecturer->is_from_fai = !($request['department'] == Department::OTHER);
-                $lecturer->specialization = $request['specialization'];
                 $lecturer->email = $request['email'];
+                $lecturer->department = $request['department'];
+                $lecturer->is_from_fai = !($request['department'] == Department::OTHER);
+                $lecturer->title = $request['title'];
                 $lecturer->phone = $request['phone'];
+                $lecturer->external_institution = $request['external_institution'];
+                $lecturer->specialization = $request['specialization'];
+
                 $lecturer->save();
-
-            if(isset($lecturer->is_from_fai)) {
-                $user = User::updateOrCreate(['id' => $lecturer->user_id], [
-                    'staff_number' => $lecturer->staff_number,
-                    'lecturer_id' => $lecturer->id,
-                    'name' => $request['name'],
-                    'email' => $request['email'],
-                    'password' => Hash::make( $lecturer->staff_number),
-                    'department' => $request['department'],
-                ]);
-
-                if(!isset($lecturer->user_id)) {
-                    $lecturer->user_id = $user->id;
-                    $lecturer->save();
-                }
             }
 
+            // Commit changes to database and return user instance
             DB::commit();
+            return $user;
 
-            return $lecturer;
         } catch (Exception $e) {
+            // If exception occurs, reverse made changes
             DB::rollBack();
             throw $e;
         }
-    }
-
-    /**
-     * Soft-deletes Lecturer model
-     * 
-     * @param int $id
-     * @return void
-     */
-    public function deleteLecturer($id): void 
-    {
-        DB::transaction(function () use ($id) {
-            $lecturer = Lecturer::findOrFail($id);
-            if($lecturer->is_from_fai) {
-                User::find($lecturer->user_id)->delete();
-            }
-            $lecturer->delete();
-        });
     }
 
     /**
@@ -146,6 +157,8 @@ class UserService
     public function deleteUser($id): void
     {
         DB::transaction(function () use ($id) {
+            // Search and delete user entry from database
+            // If lecturer is part of FAI, delete corresponding lecturer entry
             $user = User::findOrFail($id);
             if(isset($user->lecturer_id)) {
                 Lecturer::find($user->lecturer_id)->delete();

@@ -9,27 +9,28 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
-class UserUpdateRequest
+class LecturerGetRequest
 {
     /**
-     * Validate the user request data from the Request object.
+     * Validate the lecturer request data from the Request object.
      *
      * @param Request $request
-     * @param int $id = null
      * @return array Validated data
      *
      * @throws ValidationException
      */
-    public static function validate(Request $request, $id): array
+    public static function validate(Request $request): array
     {
         $validator = Validator::make($request->all(), [
-            'name' => ['required'],
-            'title' => ['required', Rule::in(LecturerTitle::all())],
-            'email' => ['required', Rule::unique('users')->ignore($id)],
-            'department' => ['required', Rule::in(Department::all())],
-            'phone' => ['nullable'],
+            'staff_number' => ['nullable'],
+            'name' => ['nullable'],
+            'title' => ['nullable', Rule::in(LecturerTitle::all())],
+            'email' => ['nullable'],
+            'department' => ['nullable', Rule::in(Department::all())],
             'external_institution' => ['nullable'],
-            'specialization' => ['nullable']
+            'specialization' => ['nullable'],
+            'phone' => ['nullable'],
+            'per_page' => ['nullable', 'integer']
         ]);
 
         if($validator->fails()) {
