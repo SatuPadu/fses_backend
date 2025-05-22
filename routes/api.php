@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PasswordResetController;
+use App\Modules\UserManagement\Controllers\UserController;
+use App\Modules\UserManagement\Controllers\LecturerController;
 
 // API Health Check
 Route::get('/status', function () {
@@ -38,4 +40,20 @@ Route::prefix('password')->group(function () {
 
     Route::post('reset', [PasswordResetController::class, 'resetPassword'])
         ->middleware('throttle:5,1');
+});
+
+// User Management Routes - Lecturers
+Route::prefix('lecturers')->group(function () {
+    Route::get('/', [LecturerController::class, 'index']);
+    Route::post('/', [LecturerController::class, 'store']);
+    Route::put('/{id}', [LecturerController::class, 'update']);
+    Route::delete('/{id}', [LecturerController::class, 'destroy']);
+});
+
+// User Management Routes - Users
+Route::prefix('users')->group(function () {
+    Route::get('/', [UserController::class, 'index']);
+    Route::post('/', [UserController::class, 'store']);
+    Route::put('/{id}', [UserController::class, 'update']);
+    Route::delete('/{id}', [UserController::class, 'destroy']);
 });
