@@ -10,7 +10,7 @@ class NominationStatus
     public const PENDING = 'Pending';
     public const NOMINATED = 'Nominated';
     public const LOCKED = 'Locked';
-    
+    public const POSTPONED = 'Postponed';
     /**
      * Get all options as an array
      *
@@ -22,6 +22,7 @@ class NominationStatus
             self::PENDING,
             self::NOMINATED,
             self::LOCKED,
+            self::POSTPONED,
         ];
     }
     
@@ -36,6 +37,7 @@ class NominationStatus
             self::PENDING => 'Pending',
             self::NOMINATED => 'Nominated',
             self::LOCKED => 'Locked',
+            self::POSTPONED => 'Postponed',
         ];
     }
     

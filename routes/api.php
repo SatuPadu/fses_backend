@@ -1,4 +1,3 @@
-use App\Modules\Student\Controllers\StudentController;
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -46,9 +45,12 @@ Route::prefix('password')->group(function () {
 
 // Student Management Routes (Protected by JWT middleware)
 Route::prefix('students')->middleware('jwt.verify')->group(function () {
-    Route::get('/', [StudentController::class, 'index']);
-    Route::post('/', [StudentController::class, 'store']);
-    Route::post('/import', [StudentController::class, 'importExcel']);
+    Route::get('/', [StudentController::class, 'index']); // list students
+    Route::post('/', [StudentController::class, 'store']); // create student
+    Route::post('/import', [StudentController::class, 'importExcel']); // import students from Excel
+    Route::get('{id}', [StudentController::class, 'show']); // view student by ID
+    Route::put('{id}', [StudentController::class, 'update']); // update student
+    Route::delete('{id}', [StudentController::class, 'destroy']); // delete student
 });
 
 Route::prefix('programs')->group(function () {
