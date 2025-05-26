@@ -36,6 +36,8 @@ class StoreStudentRequest extends FormRequest
             'department' => 'required|in:SEAT,II,BIHG,CAI,Other',
             'main_supervisor_id' => 'required|integer|exists:lecturers,id',
             'evaluation_type' => 'required|in:FirstEvaluation,ReEvaluation',
+            'main_supervisor_id' => 'required|integer|exists:lecturers,id',
+            'co_supervisor_id' => 'nullable|integer|exists:lecturers,id',
             'research_title' => 'nullable|string',
             'is_postponed' => 'boolean',
             'postponement_reason' => 'nullable|string',
