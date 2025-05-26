@@ -60,7 +60,8 @@ class StudentController extends Controller
     public function store(StoreStudentRequest $request): JsonResponse
     {
         try {
-            return $this->studentService->createStudent($request->validated());
+            $student = $this->studentService->createStudent($request->validated());
+            return response()->json($student, 201);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'error' => 'Supervisor not found'
@@ -87,7 +88,8 @@ class StudentController extends Controller
     public function importExcel(ImportStudentRequest $request): JsonResponse
     {
         try {
-            return $this->studentService->importFromExcel($request);
+            $result = $this->studentService->importFromExcel($request->file('file'));
+            return response()->json($result);
         } catch (QueryException $e) {
             return response()->json([
                 'error' => 'Excel import failed - database issue',
@@ -97,47 +99,6 @@ class StudentController extends Controller
             return response()->json([
                 'error' => 'Unexpected error during import',
                 'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Assign supervisors to a student.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function assignSupervisors(Request $request, int $id): JsonResponse
-    {
-        try {
-            $data = $request->all();
-            $data['student_id'] = $id;
-
-            $validator = Validator::make($data, [
-                'student_id' => ['required', 'exists:students,id'],
-                'main_supervisor_id' => ['required', 'exists:lecturers,id'],
-                'co_supervisor_ids' => ['nullable', 'array'],
-                'co_supervisor_ids.*' => ['integer', 'exists:lecturers,id'],
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'error' => 'Validation failed.',
-                    'messages' => $validator->errors(),
-                ], 422);
-            }
-
-            $student = $this->studentService->assignSupervisors($id, $validator->validated());
-
-            return response()->json([
-                'message' => 'Supervisors assigned successfully.',
-                'data' => $student,
-            ]);
-        } catch (Throwable $e) {
-            return response()->json([
-                'error' => 'Failed to assign supervisors.',
-                'message' => $e->getMessage(),
             ], 500);
         }
     }

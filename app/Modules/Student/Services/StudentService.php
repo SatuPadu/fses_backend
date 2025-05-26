@@ -4,7 +4,7 @@ namespace App\Modules\Student\Services;
 
 use App\Modules\Student\Models\Student;
 use App\Modules\Student\Imports\StudentsImport;
-use App\Modules\Lecturer\Models\Lecturer;
+use App\Modules\UserManagement\Models\Lecturer;
 use Illuminate\Http\UploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
 
