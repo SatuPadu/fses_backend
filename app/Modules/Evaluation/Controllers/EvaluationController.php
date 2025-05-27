@@ -59,7 +59,7 @@ class EvaluationController extends Controller
     public function postpone(PostponeEvaluationRequest $request, int $id)
     {
         try {
-            $evaluation = $this->evaluationService->postpone($id, \App\Enums\NominationStatus::Postponed);
+            $evaluation = $this->evaluationService->postpone($id);
 
             return response()->json([
                 'message' => 'Evaluation postponed successfully.',

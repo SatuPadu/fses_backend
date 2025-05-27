@@ -132,45 +132,4 @@ class ProgramController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-
-    /**
-     * Assign lecturers to a program.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function assignLecturers(Request $request, int $id): JsonResponse
-    {
-        try {
-            $data = $request->all();
-            $data['program_id'] = $id;
-
-            $validator = \Validator::make($data, [
-                'program_id' => ['required', 'exists:programs,id'],
-                'lecturer_ids' => ['required', 'array'],
-                'lecturer_ids.*' => ['integer', 'exists:lecturers,id'],
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'error' => 'Validation failed.',
-                    'messages' => $validator->errors(),
-                ], Response::HTTP_UNPROCESSABLE_ENTITY);
-            }
-
-            // Assuming assignLecturers method exists in the service
-            $program = $this->programService->assignLecturers($id, $validator->validated());
-
-            return response()->json([
-                'message' => 'Lecturers assigned successfully.',
-                'data' => $program,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to assign lecturers.',
-                'message' => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
 }
