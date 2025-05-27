@@ -24,7 +24,13 @@ class UserRole
      * Responsible for coordinating academic programs
      */
     public const PROGRAM_COORDINATOR = 'ProgramCoordinator';
-    
+
+    /**
+     * Chairperson role
+     * Responsible for chairing academic programs
+     */
+    public const CHAIRPERSON = 'Chairperson';
+
     /**
      * PGAM role (Postgraduate Academic Manager)
      * Responsible for overseeing postgraduate academic matters
@@ -42,6 +48,7 @@ class UserRole
             self::OFFICE_ASSISTANT,
             self::SUPERVISOR,
             self::PROGRAM_COORDINATOR,
+            self::CHAIRPERSON,
             self::PGAM,
         ];
     }
@@ -57,6 +64,7 @@ class UserRole
             self::OFFICE_ASSISTANT => 'Office Assistant',
             self::SUPERVISOR => 'Supervisor',
             self::PROGRAM_COORDINATOR => 'Program Coordinator',
+            self::CHAIRPERSON => 'Chairperson',
             self::PGAM => 'Postgraduate Academic Manager',
         ];
     }
@@ -72,6 +80,7 @@ class UserRole
             self::OFFICE_ASSISTANT => 'Handles administrative tasks and basic operations',
             self::SUPERVISOR => 'Supervises students and their research progress',
             self::PROGRAM_COORDINATOR => 'Coordinates academic programs and curriculum',
+            self::CHAIRPERSON => 'Chairs academic programs',
             self::PGAM => 'Oversees all postgraduate academic matters',
         ];
     }
@@ -110,7 +119,8 @@ class UserRole
             self::OFFICE_ASSISTANT => 1,
             self::SUPERVISOR => 2,
             self::PROGRAM_COORDINATOR => 3,
-            self::PGAM => 4,
+            self::CHAIRPERSON => 4,
+            self::PGAM => 5,
         ];
         
         return $hierarchy[$role] ?? 0;

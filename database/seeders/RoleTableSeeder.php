@@ -37,6 +37,15 @@ class RoleTableSeeder extends Seeder
                 'documents' => ['view', 'upload', 'approve', 'delete'],
                 'reports' => ['view', 'generate'],
             ]),
+            UserRole::CHAIRPERSON => json_encode([
+                'users' => ['view', 'create', 'edit', 'delete'],
+                'students' => ['view', 'create', 'edit', 'approve', 'delete'],
+                'courses' => ['view', 'create', 'edit', 'approve', 'delete'],
+                'research' => ['view', 'comment', 'approve', 'reject'],
+                'documents' => ['view', 'upload', 'approve', 'delete'],
+                'reports' => ['view', 'generate', 'publish'],
+                'settings' => ['view', 'edit'],
+            ]),
             UserRole::PGAM => json_encode([
                 'users' => ['view', 'create', 'edit', 'delete'],
                 'students' => ['view', 'create', 'edit', 'approve', 'delete'],
