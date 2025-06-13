@@ -9,24 +9,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\PasswordResetMail;
-use App\Modules\Auth\Repositories\UserRepository;
+use App\Modules\Auth\Models\PasswordReset;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-use App\Modules\Auth\Repositories\PasswordResetRepository;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class PasswordResetService
 {
-    private PasswordResetRepository $passwordResetRepo;
-    private UserRepository $userRepository;
-
-    public function __construct(
-        PasswordResetRepository $passwordResetRepo,
-        UserRepository $userRepository
-    ) {
-        $this->passwordResetRepo = $passwordResetRepo;
-        $this->userRepository = $userRepository;
-    }
-
     /**
      * Send password reset link to the user's email.
      *
@@ -34,7 +22,7 @@ class PasswordResetService
      * @return string
      * @throws NotFoundHttpException
      */
-    public function sendResetLink(string $email): string
+    public function sendResetLink(string $email): void
     {
         try {
             // Validate email exists
@@ -46,15 +34,17 @@ class PasswordResetService
             // Generate token and expiry time
             $token = Str::random(64); // Unique token
             $hashedToken = Hash::make($token); // Hashed for security
-            $expiresAt = Carbon::now()->addMinutes(config('auth.passwords.users.expire', 60));
-    
+            $expiresAt = Carbon::now()->addMinutes(config('auth.passwords.users.expire', 60));    
             // Store token in repository
-            $this->passwordResetRepo->store($email, $hashedToken, $expiresAt);
+            PasswordReset::updateOrCreate(
+                ['email' => $email],
+                ['token' => $hashedToken,
+                'expires_at' => $expiresAt]
+            );
     
             // Send reset email asynchronously
-            Mail::to($email)->queue(new PasswordResetMail($token));
+            Mail::to($email)->queue(new PasswordResetMail($hashedToken));
             
-            return $token;
         } catch (\Exception $e) {
             throw $e;
         }
@@ -68,20 +58,20 @@ class PasswordResetService
      */
     public function resetPassword(array $data): void
     {
-        // Find reset record by email and token
-        $resetRecord = $this->passwordResetRepo->findByToken($data['email'], $data['token']);
+        // Find reset record by token
+        $resetRecord = PasswordReset::where('token', $data['token'])->first();
         if (!$resetRecord) {
             throw new HttpException(400, 'Invalid or expired token.');
         }
 
         // Check token expiration
         if (Carbon::now()->greaterThan($resetRecord->expires_at)) {
-            $this->passwordResetRepo->delete($resetRecord); // Cleanup expired token
+            $resetRecord->delete(); // Cleanup expired token
             throw new HttpException(403, 'The password reset token has expired.');
         }
 
-        // Find user via UserRepository
-        $user = $this->userRepository->findByEmail($data['email']);
+        // Find user by email
+        $user = User::where('email', $resetRecord->email)->first();
         if (!$user) {
             throw new HttpException(404, 'User not found.');
         }
@@ -92,10 +82,11 @@ class PasswordResetService
         }
 
         // Update user's password
-        $user->update(['password' => Hash::make($data['password'])]);
+        $user->password = Hash::make($data['password']);
+        $user->save();
 
         // Delete reset token to prevent reuse
-        $this->passwordResetRepo->delete($resetRecord);
+        $resetRecord->delete();
     }
 
     /**
