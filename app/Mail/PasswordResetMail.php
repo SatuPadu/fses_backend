@@ -36,7 +36,7 @@ class PasswordResetMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Password Reset Mail',
+            subject: 'Password Reset Request'
         );
     }
 
@@ -48,7 +48,7 @@ class PasswordResetMail extends Mailable implements ShouldQueue
         return new Content(
             view: 'emails.password_reset',
             with: [
-                'resetUrl' => config('app.url') . '/reset-password?token=' . $this->token,
+                'resetUrl' => config('app.url') . '/auth/reset-password?token=' . $this->token,
             ],
         );
     }

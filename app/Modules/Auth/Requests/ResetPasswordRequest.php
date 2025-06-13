@@ -2,6 +2,7 @@
 
 namespace App\Modules\Auth\Requests;
 
+use App\Modules\Auth\Models\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -22,28 +23,33 @@ class ResetPasswordRequest
     {
         // Perform the validation
         $validator = Validator::make($request->all(), [
-            'token' => 'required|string',
-            'email' => 'required|email|exists:users,email',
-            'password' => 'required|string|min:8|confirmed',
+            'token' => 'required|string|exists:password_resets,token',
+            'password' => 'required|string|min:8|confirmed|regex:/^[A-Za-z0-9]{8,}$/',
         ], [
-            'email.exists' => 'We could not find a user with that email address.',
             'password.min' => 'The password must be at least 8 characters.',
             'password.confirmed' => 'The password confirmation does not match.',
         ]);
 
         // Add custom validation logic
         $validator->after(function ($validator) use ($request) {
-            $email = $request->input('email');
             $token = $request->input('token');
             $password = $request->input('password');
+
+            // Find the password reset record
+            $resetRecord = PasswordReset::where('token', $token)->orderBy('created_at', 'desc')->first();
             
+            if (!$resetRecord) {
+                $validator->errors()->add('token', 'The password reset token is invalid or has expired.');
+                return;
+            }
+
             // Get user by email
-            $user = User::where('email', $email)->first();
+            $user = User::where('email', $resetRecord->email)->first();
             
             if ($user) {
                 // Check if the token is valid and not expired
-                if (!self::isValidToken($user, $token)) {
-                    $validator->errors()->add('token', 'The password reset token is invalid or has expired.');
+                if (!$resetRecord->expires_at || $resetRecord->expires_at < now()) {
+                    $validator->errors()->add('token', 'The password reset token has expired.');
                 }
                 
                 // Check if the account is active
@@ -54,11 +60,6 @@ class ResetPasswordRequest
                 // Check if new password is different from current password
                 if (self::isSamePassword($user, $password)) {
                     $validator->errors()->add('password', 'The new password cannot be the same as your current password.');
-                }
-                
-                // Check password complexity requirements
-                if (!self::isPasswordComplex($password)) {
-                    $validator->errors()->add('password', 'The password must include at least one uppercase letter, one lowercase letter, one number, and one special character.');
                 }
             }
         });
@@ -104,36 +105,5 @@ class ResetPasswordRequest
     protected static function isSamePassword(User $user, string $newPassword): bool
     {
         return Hash::check($newPassword, $user->password);
-    }
-    
-    /**
-     * Check if password meets complexity requirements.
-     *
-     * @param string $password
-     * @return bool
-     */
-    protected static function isPasswordComplex(string $password): bool
-    {
-        // Check for at least one uppercase letter
-        if (!preg_match('/[A-Z]/', $password)) {
-            return false;
-        }
-        
-        // Check for at least one lowercase letter
-        if (!preg_match('/[a-z]/', $password)) {
-            return false;
-        }
-        
-        // Check for at least one number
-        if (!preg_match('/[0-9]/', $password)) {
-            return false;
-        }
-        
-        // Check for at least one special character
-        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
-            return false;
-        }
-        
-        return true;
     }
 }
