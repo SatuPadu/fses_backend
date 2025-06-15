@@ -41,4 +41,19 @@ class Evaluation extends Model
     {
         return $this->belongsTo(Student::class);
     }
+
+    public function examiner1()
+    {
+        return $this->belongsTo(Examiner::class, 'examiner1_id');
+    }
+
+    public function examiner2()
+    {
+        return $this->belongsTo(Examiner::class, 'examiner2_id');
+    }
+
+    public function examiner3()
+    {
+        return $this->belongsTo(Examiner::class, 'examiner3_id');
+    }
 }

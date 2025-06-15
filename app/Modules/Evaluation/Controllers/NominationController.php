@@ -5,25 +5,30 @@ namespace App\Modules\Evaluation\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 use App\Modules\Evaluation\Services\NominationService;
-use App\Modules\Evaluation\Requests\StoreEvaluationRequest;
 use App\Modules\Evaluation\Requests\StoreNominationRequest;
-use App\Modules\Evaluation\Requests\UpdateEvaluationRequest;
 use App\Modules\Evaluation\Requests\UpdateNominationRequest;
-use App\Modules\Evaluation\Requests\PostponeEvaluationRequest;
 use App\Modules\Evaluation\Requests\PostponeNominationRequest;
 
 class NominationController extends Controller
 {
     protected NominationService $nominationService;
 
+    /**
+     * Inject the NominationService dependency.
+     */
     public function __construct(NominationService $nominationService)
     {
         $this->nominationService = $nominationService;
     }
 
+    /**
+     * Store a new student evaluation containing examiner nominations.
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return JsonResponse
+     */
     public function store(Request $request): JsonResponse
     {
         try {
@@ -42,7 +47,14 @@ class NominationController extends Controller
         }
     }
 
-    public function update(Request $request, int $evaluationId)
+    /**
+     * Update an existing student evaluation with new examiner nominations
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @param int $evaluationId
+     * @return JsonResponse
+     */
+    public function update(Request $request, int $evaluationId): JsonResponse
     {
         try {
             $validated_request = UpdateNominationRequest::validate($request, $evaluationId);
@@ -60,7 +72,14 @@ class NominationController extends Controller
         }
     }
 
-    public function postpone(Request $request, $evaluationId)
+    /**
+     * Postpone a student's evaluation.
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @param mixed $evaluationId
+     * @return JsonResponse
+     */
+    public function postpone(Request $request, $evaluationId): JsonResponse
     {
         try {
             $validated_request = PostponeNominationRequest::validate($request, $evaluationId);

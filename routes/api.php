@@ -85,8 +85,7 @@ Route::prefix('evaluation')->middleware('jwt.verify')->group(function () {
     Route::post('/nominate', [NominationController::class, 'store']);
     Route::put('/nominate/update/{evaluationId}', [NominationController::class, 'update']);
     Route::put('/nominate/postpone/{evaluationId}', [NominationController::class, 'postpone']);
-    Route::post('/assign', [AssignmentController::class, 'store']);
-    Route::put('/assign/update/{evaluationId}', [AssignmentController::class, 'update']);
+    Route::post('/assign', [AssignmentController::class, 'assign']);
     Route::put('/assign/lock_nomination/{evaluationId}', [AssignmentController::class, 'lock']);
 });
 
