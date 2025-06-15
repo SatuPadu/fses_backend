@@ -2,17 +2,17 @@
 
 namespace App\Modules\Evaluation\Services;
 
+use Auth;
 use Exception;
 use App\Enums\LecturerTitle;
 use App\Enums\NominationStatus;
 use Illuminate\Support\Facades\DB;
-use Auth;
 use App\Modules\Evaluation\Models\Student;
 use App\Modules\Nomination\Models\Examiner;
 use App\Modules\Evaluation\Models\Evaluation;
 
 /**
- * Service class for handling evaluation-related business logic.
+ * Service class for handling business logic related to the Supervisor role.
  */
 class NominationService
 {

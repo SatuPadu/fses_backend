@@ -2,17 +2,15 @@
 
 namespace App\Modules\Evaluation\Services;
 
+use Auth;
+use DB;
 use App\Enums\LecturerTitle;
 use App\Modules\Evaluation\Models\Chairperson;
-use App\Modules\Evaluation\Models\Examiner;
-use App\Modules\Evaluation\Models\Student;
-use App\Modules\Evaluation\Models\Supervisor;
-use DB;
-use Auth;
 use App\Enums\NominationStatus;
 use App\Modules\Evaluation\Models\Evaluation;
+
 /**
- * Service class for handling evaluation-related business logic.
+ * Service class for handling business logic related to the Program Coordinator role.
  */
 class AssignmentService
 {
