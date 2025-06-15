@@ -49,10 +49,16 @@ class AuthController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->sendUnauthorizedError("Invalid credentials");
         } catch (\Exception $e) {
+            // Check if the error message indicates a locked account
+            $isAccountLocked = str_contains($e->getMessage(), 'Account is locked');
+            
             return $this->sendError(
-                'An unexpected error occurred. Please try again later.',
-                ['error' => $e->getMessage()],
-                500
+                $e->getMessage(),
+                [
+                    'error' => $e->getMessage(),
+                    'account_locked' => $isAccountLocked
+                ],
+                $isAccountLocked ? 423 : 500
             );
         }
     }
@@ -96,6 +102,22 @@ class AuthController extends Controller
             return $this->sendUnauthorizedError('Token could not be refreshed.');
         } catch (\Exception $e) {
             return $this->sendError('An unexpected error occurred.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Reactivate a locked user account
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function reactivateAccount(int $id): JsonResponse
+    {
+        try {
+            $result = $this->authService->reactivateAccount($id);
+            return $this->sendResponse($result, 'Account reactivated successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to reactivate account.', ['error' => $e->getMessage()], 400);
         }
     }
 }

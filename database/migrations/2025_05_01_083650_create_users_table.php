@@ -25,6 +25,7 @@ return new class extends Migration
             $table->dateTime('password_reset_expiry')->nullable();
             $table->boolean('is_active')->default(true);
             $table->boolean('is_password_updated')->default(false);
+            $table->integer('failed_login_attempts')->default(0);
             $table->timestamps();
         });
     }

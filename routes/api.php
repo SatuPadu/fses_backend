@@ -26,6 +26,7 @@ Route::prefix('auth')->group(function () {    // Public routes
         // Routes that are accessible even if password not updated
         Route::post('set-new-password', [PasswordResetController::class, 'setNewPassword']);
         Route::post('logout', [AuthController::class, 'logout']);
+        Route::get('reactivate/{id}', [AuthController::class, 'reactivateAccount']);
         
         // Routes that require password to be updated
         Route::middleware('password.updated')->group(function () {
