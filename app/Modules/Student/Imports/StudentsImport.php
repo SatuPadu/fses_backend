@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 // // Example Excel header and row (used with WithHeadingRow):
 // -----------------------------------------------------------------------------
-// student_name | name        | email            | program_id | current_semester | department | main_supervisor_id | evaluation_type  | research_title     | is_postponed | postponement_reason
+// matric_number | name        | email            | program_id | current_semester | department | main_supervisor_id | evaluation_type  | research_title     | is_postponed | postponement_reason
 // -----------------------------------------------------------------------------
 // U2100123     | Alice Smith | alice@example.com| 1          | Y1S1             | SEAT       | 5                  | FirstEvaluation  | AI in Education    | 0            | NULL
 class StudentsImport implements ToModel, WithHeadingRow
@@ -24,7 +24,7 @@ class StudentsImport implements ToModel, WithHeadingRow
      */
     public function model(array $row)
     {
-        \Log::info(' Importing student: ' . ($row['student_name'] ?? 'UNKNOWN'));
+        \Log::info(' Importing student: ' . ($row['matric_number'] ?? 'UNKNOWN'));
 
         if (!\App\Models\Lecturer::where('id', $row['main_supervisor_id'] ?? null)->exists()) {
             \Log::warning(' Skipping row: Supervisor not found', $row);
@@ -32,7 +32,7 @@ class StudentsImport implements ToModel, WithHeadingRow
         }
 
         return new Student([
-            'student_name' => trim($row['student_name'] ?? ''),
+            'matric_number' => trim($row['matric_number'] ?? ''),
             'name' => trim($row['name'] ?? ''),
             'email' => trim($row['email'] ?? ''),
             'program_id' => $row['program_id'] ?? null,
