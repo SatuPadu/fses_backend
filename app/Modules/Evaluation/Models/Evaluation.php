@@ -25,13 +25,35 @@ class Evaluation extends Model
         'locked_at',
         'semester',
         'academic_year',
-        'postponed_at',
+        'postponed_to',
+        'postponement_reason',
+        'is_postponed',
     ];
 
     protected $casts = [
         'is_auto_assigned' => 'boolean',
         'nominated_at' => 'datetime',
         'locked_at' => 'datetime',
-        'postponed_at' => 'datetime',
+        'postponed_to' => 'datetime',
     ];
+
+    public function student()
+    {
+        return $this->belongsTo(Student::class);
+    }
+
+    public function examiner1()
+    {
+        return $this->belongsTo(Examiner::class, 'examiner1_id');
+    }
+
+    public function examiner2()
+    {
+        return $this->belongsTo(Examiner::class, 'examiner2_id');
+    }
+
+    public function examiner3()
+    {
+        return $this->belongsTo(Examiner::class, 'examiner3_id');
+    }
 }

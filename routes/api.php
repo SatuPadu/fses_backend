@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Evaluation\Controllers\AssignmentController;
+use App\Modules\Evaluation\Controllers\NominationController;
 use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PasswordResetController;
@@ -77,6 +79,15 @@ Route::prefix('programs')->group(function () {
     Route::get('{id}', [ProgramController::class, 'show']);
     Route::put('{id}', [ProgramController::class, 'update']);
     Route::delete('{id}', [ProgramController::class, 'destroy']);
+});
+
+// Evaluation Routes
+Route::prefix('evaluation')->middleware('jwt.verify')->group(function () {
+    Route::post('/nominate', [NominationController::class, 'store']);
+    Route::put('/nominate/update/{evaluationId}', [NominationController::class, 'update']);
+    Route::put('/nominate/postpone/{evaluationId}', [NominationController::class, 'postpone']);
+    Route::post('/assign', [AssignmentController::class, 'assign']);
+    Route::put('/assign/lock_nomination/{evaluationId}', [AssignmentController::class, 'lock']);
 });
 
 Route::fallback(function () {
