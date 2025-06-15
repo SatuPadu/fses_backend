@@ -10,7 +10,7 @@ class Student extends Model
     const EVALUATION_TYPES = ['FirstEvaluation', 'ReEvaluation'];
 
     protected $fillable = [
-        'student_name',
+        'matric_number',
         'name',
         'email',
         'program_id',

@@ -28,7 +28,7 @@ class StoreStudentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'student_name' => 'required|string|unique:students,student_name',
+            'matric_number' => 'required|string|unique:students,matric_number',
             'name' => 'required|string',
             'email' => 'required|email',
             'program_id' => 'required|integer|exists:programs,id',

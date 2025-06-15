@@ -16,7 +16,7 @@ class StudentTableSeeder extends Seeder
 
         $students = [
             [
-                'student_name' => 'U2100123',
+                'matric_number' => 'U2100123',
                 'name' => 'Alice Smith',
                 'email' => 'alice@example.com',
                 'program_id' => 1,
@@ -31,7 +31,7 @@ class StudentTableSeeder extends Seeder
                 'updated_at' => $now,
             ],
             [
-                'student_name' => 'U2100456',
+                'matric_number' => 'U2100456',
                 'name' => 'Bob Lee',
                 'email' => 'bob@example.com',
                 'program_id' => 2,
@@ -48,7 +48,7 @@ class StudentTableSeeder extends Seeder
         ];
 
         foreach ($students as $student) {
-            $exists = DB::table('students')->where('student_name', $student['student_name'])->exists();
+            $exists = DB::table('students')->where('matric_number', $student['matric_number'])->exists();
             if (!$exists) {
                 DB::table('students')->insert($student);
             }

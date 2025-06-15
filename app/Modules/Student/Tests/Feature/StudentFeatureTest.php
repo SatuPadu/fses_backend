@@ -21,7 +21,7 @@ class StudentFeatureTest extends TestCase
     public function it_can_create_a_student_with_valid_data()
     {
         $data = [
-            'student_name' => 'U2100123',
+            'matric_number' => 'U2100123',
             'name' => 'Alice Smith',
             'email' => 'alice@example.com',
             'program_id' => 1,
@@ -37,7 +37,7 @@ class StudentFeatureTest extends TestCase
         $response = $this->postJson('/api/students', $data);
 
         $response->assertStatus(200)
-                 ->assertJsonFragment(['student_name' => 'U2100123']);
+                 ->assertJsonFragment(['matric_number' => 'U2100123']);
     }
 
     /** @test */

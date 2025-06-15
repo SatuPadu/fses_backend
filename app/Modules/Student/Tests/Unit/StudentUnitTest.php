@@ -32,7 +32,7 @@ class StudentUnitTest extends TestCase
     public function it_creates_a_student_successfully()
     {
         $data = [
-            'student_name' => 'U2100123',
+            'matric_number' => 'U2100123',
             'name' => 'Alice Smith',
             'email' => 'alice@example.com',
             'program_id' => 1,
@@ -62,7 +62,7 @@ class StudentUnitTest extends TestCase
     public function it_throws_an_error_when_student_name_is_duplicate()
     {
         $data = [
-            'student_name' => 'U2100123',
+            'matric_number' => 'U2100123',
             'name' => 'Alice Smith',
             'email' => 'alice@example.com',
             'program_id' => 1,
