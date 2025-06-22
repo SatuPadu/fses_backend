@@ -2,13 +2,13 @@
 
 namespace App\Modules\Evaluation\Services;
 
-use Auth;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Exception;
 use App\Enums\LecturerTitle;
 use App\Enums\NominationStatus;
-use Illuminate\Support\Facades\DB;
-use App\Modules\Evaluation\Models\Student;
-use App\Modules\Nomination\Models\Examiner;
+use App\Modules\Student\Models\Student;
+use App\Modules\UserManagement\Models\Lecturer;
 use App\Modules\Evaluation\Models\Evaluation;
 
 /**
@@ -20,13 +20,13 @@ class NominationService
     {
         // Examiner 1 validation
         if (isset($request['examiner1_id'])) {
-            $examiner1 = Examiner::find($request['examiner1_id']);
+            $examiner1 = Lecturer::find($request['examiner1_id']);
             $supervisor = null;
             if (isset($request['evaluation_id'])) {
-                $supervisor = Evaluation::find($request['evaluation_id'])->student->supervisor;
+                $supervisor = Evaluation::find($request['evaluation_id'])->student->mainSupervisor;
             }
             else if (isset($request['student_id'])) {
-                $supervisor = Student::find($request['student_id'])->supervisor;
+                $supervisor = Student::find($request['student_id'])->mainSupervisor;
             }
 
             if ($examiner1->id == $supervisor->id) {
@@ -49,7 +49,7 @@ class NominationService
 
         // Examiner 2 validation
         if (isset($request['examiner2_id'])) {
-            $examiner2 = Examiner::find($request['examiner2_id']);
+            $examiner2 = Lecturer::find($request['examiner2_id']);
 
             if ($examiner2->id == $supervisor->id) {
                 throw new Exception('Examiner 2 must not be the main supervisor of the student!');
@@ -61,7 +61,7 @@ class NominationService
 
         // Examiner 3 validation
         if (isset($request['examiner3_id'])) {
-            $examiner3 = Examiner::find($request['examiner3_id']);
+            $examiner3 = Lecturer::find($request['examiner3_id']);
 
             if ($examiner3->id == $supervisor->id) {
                 throw new Exception('Examiner 3 must not be the main supervisor of the student!');
@@ -159,17 +159,64 @@ class NominationService
         });
     }
 
-    // /**
-    //  * Retrieve students eligible for evaluation based on RS supervision.
-    //  *
-    //  * @param int $rsId
-    //  * @return array
-    //  */
-    // public function getEligibleStudents(int $rsId): array
-    // {
-    //     return Student::where('main_supervisor_id', $rsId)
-    //         ->where('is_postponed', false)
-    //         ->get()
-    //         ->toArray();
-    // }
+    /**
+     * Retrieve paginated and optionally filtered list of nominations.
+     *
+     * @param int $numPerPage
+     * @param array $filters
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
+    public function getNominations(int $numPerPage, array $filters)
+    {
+        $query = Evaluation::with(['student', 'examiner1', 'examiner2', 'examiner3', 'chairperson']);
+
+        // Apply filters
+        if (isset($filters['student_id'])) {
+            $query->where('student_id', $filters['student_id']);
+        }
+
+        if (isset($filters['nomination_status'])) {
+            $query->where('nomination_status', $filters['nomination_status']);
+        }
+
+        if (isset($filters['semester'])) {
+            $query->where('semester', $filters['semester']);
+        }
+
+        if (isset($filters['academic_year'])) {
+            $query->where('academic_year', $filters['academic_year']);
+        }
+
+        // Apply role-based filtering
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('role_name')->toArray();
+
+
+        // Check if user is a Program Coordinator (can only see their department)
+        if (in_array('ProgramCoordinator', $userRoles)) {
+            $query->whereHas('student', function ($q) use ($user) {
+                $q->where('department', $user->department);
+            });
+        }
+        // Check if user is a Supervisor (can only see their supervised students)
+        elseif (in_array('Supervisor', $userRoles)) {
+            $query->whereHas('student', function ($q) use ($user) {
+                $q->whereHas('mainSupervisor', function ($q2) use ($user) {
+                    $q2->where('staff_number', $user->staff_number);
+                });
+            });
+        }
+        // Check if user is a Chairperson (can only see students they're chairing)
+        elseif (in_array('Chairperson', $userRoles)) {
+            $query->whereHas('chairperson', function ($cQ) use ($user) {
+                $cQ->where('staff_number', $user->staff_number);
+            });
+        }
+        // Default: no access (empty result)
+        else {
+            $query->whereRaw('1 = 0'); // This will return no results
+        }
+
+        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+    }
 }

@@ -14,58 +14,98 @@ class RoleTableSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->command->info('Seeding roles with permissions...');
+
         $now = Carbon::now();
+        $roles = $this->getRoleDefinitions();
 
-        // Define basic permissions for each role
-        $permissions = [
-            UserRole::OFFICE_ASSISTANT => json_encode([
-                'users' => ['view'],
-                'students' => ['view', 'create', 'edit'],
-                'documents' => ['view', 'upload'],
-            ]),
-            UserRole::SUPERVISOR => json_encode([
-                'users' => ['view'],
-                'students' => ['view', 'create', 'edit', 'approve'],
-                'research' => ['view', 'comment', 'approve'],
-                'documents' => ['view', 'upload', 'approve'],
-            ]),
-            UserRole::PROGRAM_COORDINATOR => json_encode([
-                'users' => ['view', 'create', 'edit'],
-                'students' => ['view', 'create', 'edit', 'approve', 'delete'],
-                'courses' => ['view', 'create', 'edit', 'delete'],
-                'research' => ['view', 'comment', 'approve', 'reject'],
-                'documents' => ['view', 'upload', 'approve', 'delete'],
-                'reports' => ['view', 'generate'],
-            ]),
-            UserRole::CHAIRPERSON => json_encode([
-                'users' => ['view', 'create', 'edit', 'delete'],
-                'students' => ['view', 'create', 'edit', 'approve', 'delete'],
-                'courses' => ['view', 'create', 'edit', 'approve', 'delete'],
-                'research' => ['view', 'comment', 'approve', 'reject'],
-                'documents' => ['view', 'upload', 'approve', 'delete'],
-                'reports' => ['view', 'generate', 'publish'],
-                'settings' => ['view', 'edit'],
-            ]),
-            UserRole::PGAM => json_encode([
-                'users' => ['view', 'create', 'edit', 'delete'],
-                'students' => ['view', 'create', 'edit', 'approve', 'delete'],
-                'courses' => ['view', 'create', 'edit', 'approve', 'delete'],
-                'research' => ['view', 'comment', 'approve', 'reject'],
-                'documents' => ['view', 'upload', 'approve', 'delete'],
-                'reports' => ['view', 'generate', 'publish'],
-                'settings' => ['view', 'edit'],
-            ]),
-        ];
-
-        // Insert all roles from the UserRole enum
-        foreach (UserRole::all() as $role) {
+        foreach ($roles as $role) {
             DB::table('roles')->insert([
-                'role_name' => $role,
-                'description' => UserRole::getDescription($role),
-                'permissions' => $permissions[$role],
+                'role_name' => $role['name'],
+                'description' => $role['description'],
+                'permissions' => json_encode($role['permissions']),
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
+            $this->command->info("✓ Created role: {$role['name']}");
         }
+
+        $this->command->info('Roles seeded successfully!');
+    }
+
+    /**
+     * Get role definitions with permissions
+     */
+    private function getRoleDefinitions(): array
+    {
+        return [
+            [
+                'name' => UserRole::OFFICE_ASSISTANT,
+                'description' => UserRole::getDescription(UserRole::OFFICE_ASSISTANT),
+                'permissions' => [
+                    'students' => ['view', 'create', 'edit', 'import'],
+                    'users' => ['view', 'create', 'edit'],
+                    'lecturers' => ['view', 'create', 'edit'],
+                    'programs' => ['view'],
+                ]
+            ],
+            [
+                'name' => UserRole::SUPERVISOR,
+                'description' => UserRole::getDescription(UserRole::SUPERVISOR),
+                'permissions' => [
+                    'students' => ['view'],
+                    'evaluations' => ['view', 'nominate', 'modify'],
+                    'nominations' => ['view', 'create', 'edit', 'postpone'],
+                ]
+            ],
+            [
+                'name' => UserRole::CO_SUPERVISOR,
+                'description' => UserRole::getDescription(UserRole::CO_SUPERVISOR),
+                'permissions' => [
+                    'students' => ['view'],
+                    'evaluations' => ['view', 'nominate', 'modify'],
+                    'nominations' => ['view', 'create', 'edit', 'postpone'],
+                ]
+            ],
+            [
+                'name' => UserRole::PROGRAM_COORDINATOR,
+                'description' => UserRole::getDescription(UserRole::PROGRAM_COORDINATOR),
+                'permissions' => [
+                    'students' => ['view', 'create', 'edit', 'delete', 'export'],
+                    'users' => ['view', 'create', 'edit', 'delete'],
+                    'lecturers' => ['view', 'create', 'edit', 'delete'],
+                    'programs' => ['view', 'create', 'edit', 'delete'],
+                    'evaluations' => ['view', 'assign', 'lock'],
+                    'nominations' => ['view', 'lock'],
+                    'chairpersons' => ['view', 'assign', 'modify'],
+                    'reports' => ['view', 'generate', 'download'],
+                ]
+            ],
+            [
+                'name' => UserRole::CHAIRPERSON,
+                'description' => UserRole::getDescription(UserRole::CHAIRPERSON),
+                'permissions' => [
+                    'students' => ['view'],
+                    'evaluations' => ['view', 'conduct'],
+                    'reports' => ['view'],
+                ]
+            ],
+            [
+                'name' => UserRole::PGAM,
+                'description' => UserRole::getDescription(UserRole::PGAM),
+                'permissions' => [
+                    'students' => ['view', 'create', 'edit', 'delete', 'export'],
+                    'users' => ['view', 'create', 'edit', 'delete'],
+                    'lecturers' => ['view', 'create', 'edit', 'delete'],
+                    'programs' => ['view', 'create', 'edit', 'delete'],
+                    'evaluations' => ['view', 'assign', 'lock'],
+                    'nominations' => ['view', 'lock'],
+                    'chairpersons' => ['view', 'assign', 'modify'],
+                    'reports' => ['view', 'generate', 'download', 'publish'],
+                    'settings' => ['view', 'edit'],
+                ]
+            ],
+        ];
     }
 }

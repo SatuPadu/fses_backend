@@ -27,6 +27,6 @@ class Lecturer extends Model
 
     public function user(): HasOne 
     {
-        return $this->hasOne(User::class);
+        return $this->hasOne(User::class, 'staff_number', 'staff_number');
     }
 }

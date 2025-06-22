@@ -73,4 +73,27 @@ class AssignmentController extends Controller
             );
         }
     }
+
+    /**
+     * Display a listing of assignments.
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @return JsonResponse
+     */
+    public function index(Request $request): JsonResponse
+    {
+        try {
+            $assignments = $this->assignmentService->getAssignments(
+                $request->get('per_page', 10),
+                $request->all()
+            );
+            return $this->sendResponse($assignments, 'Assignments retrieved successfully!');
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }
