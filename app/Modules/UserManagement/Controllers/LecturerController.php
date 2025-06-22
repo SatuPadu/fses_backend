@@ -122,4 +122,31 @@ class LecturerController extends Controller
             );
         }
     }
+
+    /**
+     * Get lecturer details
+     * 
+     * @param int $id
+     * @param \Illuminate\Http\Request $request
+     * @return JsonResponse
+     */
+    public function lecturerDetail(int $id, Request $request): JsonResponse
+    {
+        try {
+            $semester = $request->get('semester');
+            $academicYear = $request->get('academic_year');
+            
+            $lecturerDetails = $this->lecturerService->getLecturerDetails($id, $semester, $academicYear);
+
+            return $this->sendResponse($lecturerDetails, 'Lecturer details with workload statistics retrieved successfully!');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->sendError('Lecturer not found.', [], Response::HTTP_NOT_FOUND);
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }

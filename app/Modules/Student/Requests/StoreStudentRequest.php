@@ -34,6 +34,7 @@ class StoreStudentRequest extends FormRequest
             'program_id' => 'required|integer|exists:programs,id',
             'current_semester' => 'required|string',
             'department' => 'required|in:SEAT,II,BIHG,CAI,Other',
+            'country' => 'nullable|string|max:100',
             'main_supervisor_id' => 'required|integer|exists:lecturers,id',
             'evaluation_type' => 'required|in:FirstEvaluation,ReEvaluation',
             'main_supervisor_id' => 'required|integer|exists:lecturers,id',

@@ -3,7 +3,7 @@
 namespace App\Modules\Program\Services;
 
 use App\Modules\Program\Models\Program;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @service ProgramService
@@ -42,6 +42,36 @@ class ProgramService
 
         if (isset($request['department'])) {
             $query->where('department', '=', $request['department']);
+        }
+
+        // Apply role-based filtering
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('role_name')->toArray();
+
+        if (in_array('ProgramCoordinator', $userRoles)) {
+            $query->where('department', $user->department);
+        }
+        // Check if user is a Supervisor (can only see programs of their supervised students)
+        elseif (in_array('Supervisor', $userRoles)) {
+            $query->whereHas('students', function ($q) use ($user) {
+                $q->whereHas('mainSupervisor', function ($q2) use ($user) {
+                    $q2->where('staff_number', $user->staff_number);
+                });
+            });
+        }
+        // Check if user is a Chairperson (can only see programs of students they're chairing)
+        elseif (in_array('Chairperson', $userRoles)) {
+            $query->whereHas('students', function ($q) use ($user) {
+                $q->whereHas('evaluations', function ($evalQ) use ($user) {
+                    $evalQ->whereHas('chairperson', function ($cQ) use ($user) {
+                        $cQ->where('staff_number', $user->staff_number);
+                    });
+                });
+            });
+        }
+        // Default: no access (empty result)
+        else {
+            $query->whereRaw('1 = 0'); // This will return no results
         }
 
         return $query->paginate($numPerPage);

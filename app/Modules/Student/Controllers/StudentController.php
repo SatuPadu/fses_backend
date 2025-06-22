@@ -79,25 +79,95 @@ class StudentController extends Controller
         }
     }
 
+
     /**
-     * Import students from uploaded Excel file.
+     * Display the specified student.
      *
-     * @param ImportStudentRequest $request
+     * @param int $id
      * @return JsonResponse
      */
-    public function importExcel(ImportStudentRequest $request): JsonResponse
+    public function show($id): JsonResponse
     {
         try {
-            $result = $this->studentService->importFromExcel($request->file('file'));
-            return response()->json($result);
+            $student = $this->studentService->getStudentById($id);
+            return response()->json($student);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'error' => 'Student not found'
+            ], 404);
+        } catch (Throwable $e) {
+            return response()->json([
+                'error' => 'Failed to retrieve student',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update the specified student in storage.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function update(Request $request, $id): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'matric_number' => 'sometimes|required|string|unique:students,matric_number,' . $id,
+                'name' => 'sometimes|required|string',
+                'email' => 'sometimes|required|email',
+                'program_id' => 'sometimes|required|integer|exists:programs,id',
+                'current_semester' => 'sometimes|required|string',
+                'department' => 'sometimes|required|in:SEAT,II,BIHG,CAI,Other',
+                'country' => 'nullable|string|max:100',
+                'main_supervisor_id' => 'sometimes|required|integer|exists:lecturers,id',
+                'evaluation_type' => 'sometimes|required|in:FirstEvaluation,ReEvaluation',
+                'co_supervisor_id' => 'nullable|integer|exists:lecturers,id',
+                'research_title' => 'nullable|string',
+                'is_postponed' => 'boolean',
+                'postponement_reason' => 'nullable|string',
+            ]);
+
+            $student = $this->studentService->updateStudent($id, $validated);
+            return response()->json($student);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'error' => 'Student not found'
+            ], 404);
         } catch (QueryException $e) {
             return response()->json([
-                'error' => 'Excel import failed - database issue',
+                'error' => 'Database error',
                 'message' => $e->getMessage()
             ], 400);
         } catch (Throwable $e) {
             return response()->json([
-                'error' => 'Unexpected error during import',
+                'error' => 'Unexpected error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove the specified student from storage.
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function destroy($id): JsonResponse
+    {
+        try {
+            $this->studentService->deleteStudent($id);
+            return response()->json([
+                'message' => 'Student deleted successfully'
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'error' => 'Student not found'
+            ], 404);
+        } catch (Throwable $e) {
+            return response()->json([
+                'error' => 'Failed to delete student',
                 'message' => $e->getMessage()
             ], 500);
         }

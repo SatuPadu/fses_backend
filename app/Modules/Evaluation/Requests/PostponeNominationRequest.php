@@ -15,8 +15,8 @@ class PostponeNominationRequest
 
         $validator = Validator::make($data, [
             'evaluation_id' => ['required', 'exists:student_evaluations,id'],
-            'reason' => ['nullable', 'string', 'max:1000'],
-            'postponed_to' => ['required', 'string'],
+            'reason' => ['required', 'string', 'max:1000'],
+            'postponed_to' => ['required', 'date', 'after:today'],
         ]);
 
         if($validator->fails()) {

@@ -39,32 +39,66 @@ class StudentService
             $query->where('name', 'like', '%' . $filters['name'] . '%');
         }
 
-        $user = auth()->user();
-        $role = $user->roles->pluck('role_name')->first();
+        if (isset($filters['evaluation_type'])) {
+            $query->where('evaluation_type', $filters['evaluation_type']);
+        }
 
-        switch ($role) {
-            case 'RS':
-                $query->where('main_supervisor_id', $user->lecturer_id);
-                break;
-            case 'PC':
-                $query->where('department', $user->department);
-                break;
-            case 'PGAM':
-            default:
-                break;
+        // Apply role-based filtering
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('role_name')->toArray();
+
+        // Check if user has PGAM role (can see all data)
+        if (in_array('PGAM', $userRoles)) {
+            // PGAM can see all data - no additional filtering needed
+        }
+        // Check if user has Office Assistant role (can see all data)
+        elseif (in_array('OfficeAssistant', $userRoles)) {
+            // Office Assistant can see all data - no additional filtering needed
+        }
+        // Check if user is a Program Coordinator (can only see their department)
+        elseif (in_array('ProgramCoordinator', $userRoles)) {
+            $query->where('department', $user->department);
+        }
+        // Check if user is a Supervisor (can only see their supervised students)
+        elseif (in_array('Supervisor', $userRoles)) {
+            $query->whereHas('mainSupervisor', function ($q) use ($user) {
+                $q->where('staff_number', $user->staff_number);
+            });
+        }
+        // Check if user is a Chairperson (can only see students they're chairing)
+        elseif (in_array('Chairperson', $userRoles)) {
+            $query->whereHas('evaluations', function ($q) use ($user) {
+                $q->whereHas('chairperson', function ($cQ) use ($user) {
+                    $cQ->where('staff_number', $user->staff_number);
+                });
+            });
+        }
+        // Default: no access (empty result)
+        else {
+            $query->whereRaw('1 = 0'); // This will return no results
         }
 
         return $query->paginate($numPerPage);
     }
 
     /**
-     * Create a new student record.
+     * Create a new student record with role-based access control.
      *
      * @param array $data
      * @return Student
+     * @throws \Exception
      */
     public function createStudent(array $data): Student
     {
+        // Apply role-based access control
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('role_name')->toArray();
+
+        // Only PGAM and Office Assistant can create students
+        if (!in_array('PGAM', $userRoles) && !in_array('OfficeAssistant', $userRoles)) {
+            throw new \Exception('Access denied. Only PGAM and Office Assistant can create student records.');
+        }
+
         if (Student::where('student_id', $data['student_id'])->exists()) {
             throw new \Exception('Student ID already exists.');
         }
@@ -74,14 +108,127 @@ class StudentService
         return Student::create($data);
     }
 
+
     /**
-     * Import students in bulk from an Excel file.
+     * Retrieve paginated and optionally filtered list of students.
+     * Alias for getAllStudents for backward compatibility.
      *
-     * @param UploadedFile $file
-     * @return void
+     * @param int $numPerPage
+     * @param array $filters
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
-    public function importFromExcel(UploadedFile $file): void
+    public function getStudents(int $numPerPage, array $filters)
     {
-        Excel::import(new StudentsImport, $file);
+        return $this->getAllStudents($numPerPage, $filters);
+    }
+
+    /**
+     * Get a specific student by ID with role-based access control.
+     *
+     * @param int $id
+     * @return Student
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws \Exception
+     */
+    public function getStudentById(int $id): Student
+    {
+        $student = Student::findOrFail($id);
+        
+        // Apply role-based access control
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('role_name')->toArray();
+
+        // Check if user has PGAM role (can see all data)
+        if (in_array('PGAM', $userRoles)) {
+            return $student;
+        }
+        // Check if user has Office Assistant role (can see all data)
+        elseif (in_array('OfficeAssistant', $userRoles)) {
+            return $student;
+        }
+        // Check if user is a Program Coordinator (can only see their department)
+        elseif (in_array('ProgramCoordinator', $userRoles)) {
+            if ($student->department !== $user->department) {
+                throw new \Exception('Access denied. You can only view students from your department.');
+            }
+            return $student;
+        }
+        // Check if user is a Supervisor (can only see their supervised students)
+        elseif (in_array('Supervisor', $userRoles)) {
+            if ($student->mainSupervisor->staff_number !== $user->staff_number) {
+                throw new \Exception('Access denied. You can only view students you supervise.');
+            }
+            return $student;
+        }
+        // Check if user is a Chairperson (can only see students they're chairing)
+        elseif (in_array('Chairperson', $userRoles)) {
+            $isChairperson = $student->evaluations->some(function ($evaluation) use ($user) {
+                return $evaluation->chairperson && $evaluation->chairperson->staff_number === $user->staff_number;
+            });
+            
+            if (!$isChairperson) {
+                throw new \Exception('Access denied. You can only view students you are chairing.');
+            }
+            return $student;
+        }
+        // Default: no access
+        else {
+            throw new \Exception('Access denied. You do not have permission to view this student.');
+        }
+    }
+
+    /**
+     * Update a student record with role-based access control.
+     *
+     * @param int $id
+     * @param array $data
+     * @return Student
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws \Exception
+     */
+    public function updateStudent(int $id, array $data): Student
+    {
+        $student = Student::findOrFail($id);
+        
+        // Apply role-based access control
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('role_name')->toArray();
+
+        // Only PGAM and Office Assistant can update students
+        if (!in_array('PGAM', $userRoles) && !in_array('OfficeAssistant', $userRoles)) {
+            throw new \Exception('Access denied. Only PGAM and Office Assistant can update student records.');
+        }
+        
+        // Validate main supervisor if provided
+        if (isset($data['main_supervisor_id'])) {
+            Lecturer::findOrFail($data['main_supervisor_id']);
+        }
+
+        $student->update($data);
+        return $student->fresh();
+    }
+
+    /**
+     * Delete a student record with role-based access control.
+     *
+     * @param int $id
+     * @return bool
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws \Exception
+     */
+    public function deleteStudent(int $id): bool
+    {
+        $student = Student::findOrFail($id);
+        
+        // Apply role-based access control
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('role_name')->toArray();
+
+        // Only PGAM and Office Assistant can delete students
+        if (!in_array('PGAM', $userRoles) && !in_array('OfficeAssistant', $userRoles)) {
+            throw new \Exception('Access denied. Only PGAM and Office Assistant can delete student records.');
+        }
+        
+        return $student->delete();
     }
 }

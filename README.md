@@ -11,8 +11,7 @@ This project is a Laravel-based backend system that provides a REST API for the 
   - [Build and Run Docker Containers](#build-and-run-docker-containers)
   - [Access the Container](#access-the-container)
   - [Run Migrations and Seeders](#run-migrations-and-seeders)
-  - [Run Tests](#run-tests)
-  - [API Documentation](#api-documentation)
+  - [Start the queue](#start-the-queue)
 
 ## Clone the Repository
 
@@ -53,8 +52,15 @@ Inside the container, run the following commands to install composer, migrate an
 composer install
 php artisan migrate --seed
 ```
+## Start the queue
 
-## Run Tests
+Inside the container, run the following commands to start the queue service. It will allow to send emails and import files:
+
+```sh
+php artisan queue:work
+```
+
+<!-- ## Run Tests
 
 To run the tests, use:
 
@@ -62,9 +68,9 @@ To run the tests, use:
 php artisan test
 ```
 
-This will execute all the test cases defined in the application.
+This will execute all the test cases defined in the application. -->
 
-## API Documentation
+<!-- ## API Documentation
 
 The API documentation is generated using Swagger. 
 
@@ -78,7 +84,7 @@ Now you can access it via the following URL once the application is running:
 
 ```sh
 http://localhost:8080/api/documentation
-```
+``` -->
 
 Notes
 	•	Ensure the .env file is correctly configured for database and other settings before running the application.
