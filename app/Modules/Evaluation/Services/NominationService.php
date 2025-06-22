@@ -4,9 +4,13 @@ namespace App\Modules\Evaluation\Services;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Exception;
 use App\Enums\LecturerTitle;
 use App\Enums\NominationStatus;
+use App\Enums\UserRole;
+use App\Mail\EvaluationPostponedMail;
 use App\Modules\Student\Models\Student;
 use App\Modules\UserManagement\Models\Lecturer;
 use App\Modules\Evaluation\Models\Evaluation;
@@ -149,13 +153,108 @@ class NominationService
     public function postpone(array $request): Evaluation
     {
         return DB::transaction(function () use ($request) {
-            $evaluation = Evaluation::findOrFail($request['evaluation_id']);
+            $evaluation = Evaluation::with(['student', 'examiner1', 'examiner2', 'examiner3', 'chairperson'])->findOrFail($request['evaluation_id']);
+            
             $evaluation->nomination_status = NominationStatus::POSTPONED;
             $evaluation->is_postponed = true;
             $evaluation->postponement_reason = $request['reason'];
             $evaluation->postponed_to = $request['postponed_to'];
             $evaluation->save();
+
+            // Send email notifications to all committee members (excluding office assistants)
+            $this->sendPostponementNotifications($evaluation, $request['reason'], $request['postponed_to']);
+
             return $evaluation;
+        });
+    }
+
+    /**
+     * Send email notifications to evaluation committee members about postponement.
+     *
+     * @param Evaluation $evaluation
+     * @param string $reason
+     * @param string $postponedTo
+     * @return void
+     */
+    private function sendPostponementNotifications(Evaluation $evaluation, string $reason, string $postponedTo): void
+    {
+        $recipients = collect();
+
+        // Get all committee members
+        $committeeMembers = [
+            $evaluation->examiner1,
+            $evaluation->examiner2,
+            $evaluation->examiner3,
+            $evaluation->chairperson,
+        ];
+
+        // Filter out null values and get their user accounts
+        foreach ($committeeMembers as $member) {
+            if ($member) {
+                $user = \App\Modules\Auth\Models\User::where('staff_number', $member->staff_number)->first();
+                if ($user) {
+                    $recipients->push($user);
+                }
+            }
+        }
+
+        // Add the student's main supervisor if not already in the committee
+        if ($evaluation->student->mainSupervisor) {
+            $supervisorUser = \App\Modules\Auth\Models\User::where('staff_number', $evaluation->student->mainSupervisor->staff_number)->first();
+            if ($supervisorUser && !$recipients->contains('id', $supervisorUser->id)) {
+                $recipients->push($supervisorUser);
+            }
+        }
+
+        // Add co-supervisors if any
+        $coSupervisors = $evaluation->student->coSupervisors;
+        foreach ($coSupervisors as $coSupervisor) {
+            $coSupervisorUser = \App\Modules\Auth\Models\User::where('staff_number', $coSupervisor->staff_number)->first();
+            if ($coSupervisorUser && !$recipients->contains('id', $coSupervisorUser->id)) {
+                $recipients->push($coSupervisorUser);
+            }
+        }
+
+        // Filter out users with Office Assistant role
+        $recipients = $recipients->filter(function ($user) {
+            return !$user->hasRole(UserRole::OFFICE_ASSISTANT);
+        });
+
+        // Send email to each recipient
+        foreach ($recipients as $recipient) {
+            try {
+                Mail::to($recipient->email)->send(new EvaluationPostponedMail($evaluation, $reason, $postponedTo));
+            } catch (Exception $e) {
+                // Log the error but don't fail the entire operation
+                Log::error('Failed to send postponement email to ' . $recipient->email . ': ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Lock multiple nominations to prevent further modifications.
+     *
+     * @param array $evaluationIds
+     * @return int
+     */
+    public function lockNominations(array $evaluationIds): int
+    {
+        return DB::transaction(function () use ($evaluationIds) {
+            $lockedCount = 0;
+            
+            foreach ($evaluationIds as $evaluationId) {
+                $evaluation = Evaluation::find($evaluationId);
+                
+                if ($evaluation && $evaluation->nomination_status !== NominationStatus::LOCKED) {
+                    $evaluation->nomination_status = NominationStatus::LOCKED;
+                    $evaluation->locked_by = Auth::id();
+                    $evaluation->locked_at = now();
+                    $evaluation->save();
+                    $lockedCount++;
+                }
+            }
+            
+            return $lockedCount;
         });
     }
 
@@ -177,6 +276,10 @@ class NominationService
 
         if (isset($filters['nomination_status'])) {
             $query->where('nomination_status', $filters['nomination_status']);
+        }
+
+        if (isset($filters['is_postponed'])) {
+            $query->where('is_postponed', $filters['is_postponed']);
         }
 
         if (isset($filters['semester'])) {

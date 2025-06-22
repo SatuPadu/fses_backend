@@ -75,16 +75,9 @@ class StudentExportService
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
-        // Check if user has PGAM role (can see all data)
-        if (in_array('PGAM', $userRoles)) {
-            // PGAM can see all data - no additional filtering needed
-        }
-        // Check if user has Office Assistant role (can see all data)
-        elseif (in_array('OfficeAssistant', $userRoles)) {
-            // Office Assistant can see all data - no additional filtering needed
-        }
+
         // Check if user is a Program Coordinator (can only see their department)
-        elseif (in_array('ProgramCoordinator', $userRoles)) {
+        if (in_array('ProgramCoordinator', $userRoles)) {
             $query->where('department', $user->department);
         }
         // Check if user is a Supervisor (can only see their supervised students)
@@ -113,6 +106,16 @@ class StudentExportService
 
         if (!empty($filters['status'])) {
             $query->where('status_re_pd', $filters['status']);
+        }
+
+        if (!empty($filters['evaluation_type'])) {
+            $query->where('evaluation_type', $filters['evaluation_type']);
+        }
+
+        if (!empty($filters['is_postponed'])) {
+            $query->whereHas('evaluations', function ($q) use ($filters) {
+                $q->where('is_postponed', $filters['is_postponed']);
+            });
         }
 
         if (!empty($filters['semester'])) {

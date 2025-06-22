@@ -39,6 +39,10 @@ class StudentService
             $query->where('name', 'like', '%' . $filters['name'] . '%');
         }
 
+        if (isset($filters['evaluation_type'])) {
+            $query->where('evaluation_type', $filters['evaluation_type']);
+        }
+
         // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();

@@ -63,16 +63,9 @@ class LecturerService
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
-        // Check if user has PGAM role (can see all data)
-        if (in_array('PGAM', $userRoles)) {
-            // PGAM can see all data - no additional filtering needed
-        }
-        // Check if user has Office Assistant role (can see all data)
-        elseif (in_array('OfficeAssistant', $userRoles)) {
-            // Office Assistant can see all data - no additional filtering needed
-        }
+
         // Check if user is a Program Coordinator (can only see lecturers from their department)
-        elseif (in_array('ProgramCoordinator', $userRoles)) {
+        if (in_array('ProgramCoordinator', $userRoles)) {
             $query->where('department', $user->department);
         }
         // Check if user is a Supervisor (can only see lecturers related to their students)
@@ -266,5 +259,202 @@ class LecturerService
             }
             $lecturer->delete();
         });
+    }
+
+    /**
+     * Get lecturer details with workload statistics for all roles.
+     *
+     * @param int $lecturerId
+     * @param string|null $semester
+     * @param string|null $academicYear
+     * @return array
+     */
+    public function getLecturerDetails(int $lecturerId, ?string $semester = null, ?string $academicYear = null): array
+    {
+        $lecturer = Lecturer::with(['user', 'user.roles'])->findOrFail($lecturerId);
+        
+        // Get current semester and academic year if not provided
+        if (!$semester || !$academicYear) {
+            $currentEvaluation = \App\Modules\Evaluation\Models\Evaluation::latest()->first();
+            $semester = $semester ?? $currentEvaluation->semester ?? null;
+            $academicYear = $academicYear ?? $currentEvaluation->academic_year ?? null;
+        }
+
+        $workloadStats = [
+            'supervisor' => $this->getSupervisorWorkload($lecturerId, $semester, $academicYear),
+            'examiner' => $this->getExaminerWorkload($lecturerId, $semester, $academicYear),
+            'chairperson' => $this->getChairpersonWorkload($lecturerId, $semester, $academicYear),
+            'co_supervisor' => $this->getCoSupervisorWorkload($lecturerId, $semester, $academicYear),
+        ];
+
+        return [
+            'lecturer' => $lecturer,
+            'workload_statistics' => $workloadStats,
+            'semester' => $semester,
+            'academic_year' => $academicYear,
+        ];
+    }
+
+    /**
+     * Get supervisor workload statistics.
+     *
+     * @param int $lecturerId
+     * @param string|null $semester
+     * @param string|null $academicYear
+     * @return array
+     */
+    private function getSupervisorWorkload(int $lecturerId, ?string $semester, ?string $academicYear): array
+    {
+        $query = \App\Modules\Student\Models\Student::where('main_supervisor_id', $lecturerId)
+            ->with(['evaluations', 'program']);
+
+        if ($semester && $academicYear) {
+            $query->whereHas('evaluations', function ($q) use ($semester, $academicYear) {
+                $q->where('semester', $semester)
+                  ->where('academic_year', $academicYear);
+            });
+        }
+
+        $students = $query->get();
+
+        $workloadByProgram = $students->groupBy('program.name')->map(function ($programStudents) {
+            return [
+                'total_students' => $programStudents->count(),
+                'nominated' => $programStudents->filter(function ($student) {
+                    return $student->evaluations->where('nomination_status', 'Nominated')->count() > 0;
+                })->count(),
+                'pending' => $programStudents->filter(function ($student) {
+                    return $student->evaluations->where('nomination_status', 'Pending')->count() > 0;
+                })->count(),
+                'postponed' => $programStudents->filter(function ($student) {
+                    return $student->evaluations->where('is_postponed', true)->count() > 0;
+                })->count(),
+                'locked' => $programStudents->filter(function ($student) {
+                    return $student->evaluations->where('nomination_status', 'Locked')->count() > 0;
+                })->count(),
+            ];
+        });
+
+        return [
+            'total_students' => $students->count(),
+            'by_program' => $workloadByProgram,
+        ];
+    }
+
+    /**
+     * Get examiner workload statistics.
+     *
+     * @param int $lecturerId
+     * @param string|null $semester
+     * @param string|null $academicYear
+     * @return array
+     */
+    private function getExaminerWorkload(int $lecturerId, ?string $semester, ?string $academicYear): array
+    {
+        $query = \App\Modules\Evaluation\Models\Evaluation::where(function ($q) use ($lecturerId) {
+            $q->where('examiner1_id', $lecturerId)
+              ->orWhere('examiner2_id', $lecturerId)
+              ->orWhere('examiner3_id', $lecturerId);
+        })->with(['student.program']);
+
+        if ($semester && $academicYear) {
+            $query->where('semester', $semester)
+                  ->where('academic_year', $academicYear);
+        }
+
+        $evaluations = $query->get();
+
+        $workloadByProgram = $evaluations->groupBy('student.program.name')->map(function ($programEvaluations) use ($lecturerId) {
+            $examiner1Count = $programEvaluations->where('examiner1_id', $lecturerId)->count();
+            $examiner2Count = $programEvaluations->where('examiner2_id', $lecturerId)->count();
+            $examiner3Count = $programEvaluations->where('examiner3_id', $lecturerId)->count();
+
+            return [
+                'total_sessions' => $examiner1Count + $examiner2Count + $examiner3Count,
+                'as_examiner1' => $examiner1Count,
+                'as_examiner2' => $examiner2Count,
+                'as_examiner3' => $examiner3Count,
+            ];
+        });
+
+        $totalSessions = $evaluations->filter(function ($evaluation) use ($lecturerId) {
+            return in_array($lecturerId, [
+                $evaluation->examiner1_id,
+                $evaluation->examiner2_id,
+                $evaluation->examiner3_id
+            ]);
+        })->count();
+
+        return [
+            'total_sessions' => $totalSessions,
+            'by_program' => $workloadByProgram,
+        ];
+    }
+
+    /**
+     * Get chairperson workload statistics.
+     *
+     * @param int $lecturerId
+     * @param string|null $semester
+     * @param string|null $academicYear
+     * @return array
+     */
+    private function getChairpersonWorkload(int $lecturerId, ?string $semester, ?string $academicYear): array
+    {
+        $query = \App\Modules\Evaluation\Models\Evaluation::where('chairperson_id', $lecturerId)
+            ->with(['student.program']);
+
+        if ($semester && $academicYear) {
+            $query->where('semester', $semester)
+                  ->where('academic_year', $academicYear);
+        }
+
+        $evaluations = $query->get();
+
+        $workloadByProgram = $evaluations->groupBy('student.program.name')->map(function ($programEvaluations) {
+            return [
+                'total_sessions' => $programEvaluations->count(),
+            ];
+        });
+
+        return [
+            'total_sessions' => $evaluations->count(),
+            'by_program' => $workloadByProgram,
+        ];
+    }
+
+    /**
+     * Get co-supervisor workload statistics.
+     *
+     * @param int $lecturerId
+     * @param string|null $semester
+     * @param string|null $academicYear
+     * @return array
+     */
+    private function getCoSupervisorWorkload(int $lecturerId, ?string $semester, ?string $academicYear): array
+    {
+        $query = \App\Modules\Evaluation\Models\CoSupervisor::where('lecturer_id', $lecturerId)
+            ->with(['student.program', 'student.evaluations']);
+
+        $coSupervisors = $query->get();
+
+        // Filter by semester and academic year if provided
+        if ($semester && $academicYear) {
+            $coSupervisors = $coSupervisors->filter(function ($coSupervisor) use ($semester, $academicYear) {
+                return $coSupervisor->student->evaluations->where('semester', $semester)
+                    ->where('academic_year', $academicYear)->count() > 0;
+            });
+        }
+
+        $workloadByProgram = $coSupervisors->groupBy('student.program.name')->map(function ($programCoSupervisors) {
+            return [
+                'total_students' => $programCoSupervisors->count(),
+            ];
+        });
+
+        return [
+            'total_students' => $coSupervisors->count(),
+            'by_program' => $workloadByProgram,
+        ];
     }
 }
