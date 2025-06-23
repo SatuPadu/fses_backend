@@ -76,9 +76,13 @@ class StudentExportService
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
 
-        // Check if user is a Program Coordinator (can only see their department)
-        if (in_array('ProgramCoordinator', $userRoles)) {
-            $query->where('department', $user->department);
+        if (in_array('PGAM', $userRoles)) {
+        }
+        elseif (in_array('OfficeAssistant', $userRoles)) {
+        }
+        // Check if user is a Program Coordinator (can only see users from their department) 
+        elseif (in_array('ProgramCoordinator', $userRoles)) {
+            $query->where('program.department', $user->department);
         }
         // Check if user is a Supervisor (can only see their supervised students)
         elseif (in_array('Supervisor', $userRoles)) {

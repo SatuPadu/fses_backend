@@ -295,8 +295,13 @@ class NominationService
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
 
-        // Check if user is a Program Coordinator (can only see their department)
-        if (in_array('ProgramCoordinator', $userRoles)) {
+        
+        if (in_array('PGAM', $userRoles)) {
+        }
+        elseif (in_array('OfficeAssistant', $userRoles)) {
+        }
+        // Check if user is a Program Coordinator (can only see users from their department) 
+        elseif (in_array('ProgramCoordinator', $userRoles)) {
             $query->whereHas('student', function ($q) use ($user) {
                 $q->where('department', $user->department);
             });

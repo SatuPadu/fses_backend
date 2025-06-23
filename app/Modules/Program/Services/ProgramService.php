@@ -48,7 +48,12 @@ class ProgramService
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
-        if (in_array('ProgramCoordinator', $userRoles)) {
+        if (in_array('PGAM', $userRoles)) {
+        }
+        elseif (in_array('OfficeAssistant', $userRoles)) {
+        }
+        // Check if user is a Program Coordinator (can only see users from their department) 
+        elseif (in_array('ProgramCoordinator', $userRoles)) {
             $query->where('department', $user->department);
         }
         // Check if user is a Supervisor (can only see programs of their supervised students)

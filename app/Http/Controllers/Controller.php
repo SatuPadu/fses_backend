@@ -34,17 +34,14 @@ class Controller extends BaseController
      * @param string|array $message
      * @return JsonResponse
      */
-    public function sendResponse($message): JsonResponse
+    public function sendResponse($result, string $message): JsonResponse
     {
+        
         $response = [
             'success' => true,
+            'data'    => SanitizeResponseHelper::sanitizeResponse($result),
+            'message' => $message,
         ];
-
-        if (is_array($message)) {
-            $response['data'] = $message;
-        } else {
-            $response['message'] = $message;
-        }
 
         return response()->json($response, \Illuminate\Http\Response::HTTP_OK);
     }
