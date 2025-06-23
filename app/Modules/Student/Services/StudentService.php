@@ -39,8 +39,20 @@ class StudentService
             $query->where('name', 'like', '%' . $filters['name'] . '%');
         }
 
+        if (isset($filters['department'])) {
+            $query->where('department', $filters['department']);
+        }
+
         if (isset($filters['evaluation_type'])) {
             $query->where('evaluation_type', $filters['evaluation_type']);
+        }
+
+        if (isset($filters['is_postponed'])) {
+            $query->where('is_postponed', $filters['is_postponed']);
+        }
+
+        if (isset($filters['supervisor_id'])) {
+            $query->where('main_supervisor_id', $filters['supervisor_id']);
         }
 
         // Apply role-based filtering
@@ -109,18 +121,6 @@ class StudentService
     }
 
 
-    /**
-     * Retrieve paginated and optionally filtered list of students.
-     * Alias for getAllStudents for backward compatibility.
-     *
-     * @param int $numPerPage
-     * @param array $filters
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
-     */
-    public function getStudents(int $numPerPage, array $filters)
-    {
-        return $this->getAllStudents($numPerPage, $filters);
-    }
 
     /**
      * Get a specific student by ID with role-based access control.

@@ -108,10 +108,6 @@ class StudentExportService
             $query->where('program_id', $filters['program_id']);
         }
 
-        if (!empty($filters['status']) && is_string($filters['status'])) {
-            $query->where('status_re_pd', $filters['status']);
-        }
-
         if (!empty($filters['evaluation_type']) && is_string($filters['evaluation_type'])) {
             $query->where('evaluation_type', $filters['evaluation_type']);
         }
@@ -192,9 +188,6 @@ class StudentExportService
             
             case 'no_matrik':
                 return $student->matric_number ?? '';
-            
-            case 'status_re_pd':
-                return $student->status_re_pd ?? '';
             
             case 'pd':
                 return $student->pd ?? '';
@@ -555,8 +548,6 @@ private function exportToPptx(array $data, array $columns): array
             'bil' => 'BIL.',
             'nama' => 'NAMA',
             'no_matrik' => 'NO. MATRIK',
-            'status_re_pd' => 'STATUS RE-PD',
-            'pd' => 'PD?',
             'kod_program' => 'KOD PROGRAM',
             'nama_program' => 'NAMA PROGRAM',
             'penyelia' => 'PENYELIA',
@@ -582,8 +573,6 @@ private function exportToPptx(array $data, array $columns): array
             'bil' => 'BIL.',
             'nama' => 'NAMA',
             'no_matrik' => 'NO. MATRIK',
-            'status_re_pd' => 'STATUS RE-PD',
-            'pd' => 'PD?',
             'kod_program' => 'KOD PROGRAM',
             'nama_program' => 'NAMA PROGRAM',
             'penyelia' => 'PENYELIA',

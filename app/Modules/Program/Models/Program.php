@@ -3,6 +3,7 @@
 namespace App\Modules\Program\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @model Program
@@ -19,4 +20,12 @@ class Program extends Model
         'total_semesters',
         'evaluation_semester',
     ];
+
+    /**
+     * Get the students enrolled in this program
+     */
+    public function students(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Student\Models\Student::class);
+    }
 }

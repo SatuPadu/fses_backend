@@ -24,8 +24,6 @@ class Student extends Model
         'research_title',
         'is_postponed',
         'postponement_reason',
-        'status_re_pd',
-        'pd',
     ];
 
     protected $casts = [

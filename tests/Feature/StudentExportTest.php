@@ -65,7 +65,7 @@ class StudentExportTest extends TestCase
 
         $response = $this->actingAs($user, 'api')
             ->postJson('/api/students/export', [
-                'columns' => ['bil', 'nama', 'no_matrik', 'status_re_pd'],
+                'columns' => ['bil', 'nama', 'no_matrik'],
                 'format' => 'csv',
                 'filters' => ['program_id' => $program->id]
             ]);
@@ -78,22 +78,22 @@ class StudentExportTest extends TestCase
     {
         $program = Program::factory()->create();
         $student = Student::factory()->create([
-            'program_id' => $program->id,
-            'status_re_pd' => 'PD Pertama'
+            'program_id' => $program->id
         ]);
 
         $user = User::factory()->create();
         $user->roles()->attach(3); // Program Coordinator role
 
+        $requestData = [
+            'columns' => ['bil', 'nama', 'no_matrik'],
+            'format' => 'excel',
+            'filters' => [
+                'program_id' => $program->id
+            ]
+        ];
+
         $response = $this->actingAs($user, 'api')
-            ->postJson('/api/students/export', [
-                'columns' => ['bil', 'nama', 'no_matrik'],
-                'format' => 'excel',
-                'filters' => [
-                    'program_id' => $program->id,
-                    'status' => 'PD Pertama'
-                ]
-            ]);
+            ->postJson('/api/students/export', $requestData);
 
         $response->assertStatus(200);
     }
@@ -113,8 +113,6 @@ class StudentExportTest extends TestCase
                     'bil',
                     'nama',
                     'no_matrik',
-                    'status_re_pd',
-                    'pd',
                     'kod_program',
                     'nama_program',
                     'penyelia',

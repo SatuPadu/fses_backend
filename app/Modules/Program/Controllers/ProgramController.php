@@ -9,6 +9,7 @@ use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 use App\Modules\Program\Requests\StoreProgramRequest;
 use App\Modules\Program\Requests\UpdateProgramRequest;
+use App\Modules\Program\Requests\ProgramGetRequest;
 use App\Modules\Program\Services\ProgramService;
 
 /**
@@ -40,16 +41,20 @@ class ProgramController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
+            $validated_request = ProgramGetRequest::validate($request);
             $programs = $this->programService->getPrograms(
-                $request->get('per_page', 10),
-                $request->all()
+                $validated_request['per_page'] ?? 10,
+                $validated_request
             );
-            return response()->json($programs);
+            return $this->sendResponse($programs, 'Program list retrieved successfully!');
+        } catch (ValidationException $e) {
+            return $this->sendValidationError($e->errors());
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to fetch programs.',
-                'message' => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->sendError(
+                'Failed to fetch programs.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -62,17 +67,15 @@ class ProgramController extends Controller
         try {
             $validated = $request->validated();
             $program = $this->programService->create($validated);
-            return response()->json($program, Response::HTTP_CREATED);
+            return $this->sendCreatedResponse($program, 'Program added successfully!');
         } catch (ValidationException $e) {
-            return response()->json([
-                'error' => 'Validation failed.',
-                'messages' => $e->errors(),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->sendValidationError($e->errors());
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to create program.',
-                'message' => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->sendError(
+                'Failed to create program.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -84,12 +87,13 @@ class ProgramController extends Controller
     {
         try {
             $program = $this->programService->getById($id);
-            return response()->json($program);
+            return $this->sendResponse($program, 'Program details retrieved successfully!');
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to fetch program.',
-                'message' => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->sendError(
+                'Failed to fetch program.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -102,17 +106,15 @@ class ProgramController extends Controller
         try {
             $validated = $request->validated();
             $program = $this->programService->update($id, $validated);
-            return response()->json($program);
+            return $this->sendResponse($program, 'Program info updated successfully!');
         } catch (ValidationException $e) {
-            return response()->json([
-                'error' => 'Validation failed.',
-                'messages' => $e->errors(),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->sendValidationError($e->errors());
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to update program.',
-                'message' => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->sendError(
+                'Failed to update program.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -124,12 +126,13 @@ class ProgramController extends Controller
     {
         try {
             $this->programService->delete($id);
-            return response()->json(['message' => 'Program deleted successfully.']);
+            return $this->sendResponse(null, 'Program info deleted successfully!');
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to delete program.',
-                'message' => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->sendError(
+                'Failed to delete program.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 }
