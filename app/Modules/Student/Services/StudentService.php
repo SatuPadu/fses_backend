@@ -31,8 +31,8 @@ class StudentService
             $query->where('program_id', $filters['program']);
         }
 
-        if (isset($filters['student_id'])) {
-            $query->where('student_id', 'like', '%' . $filters['student_id'] . '%');
+        if (isset($filters['matric_number'])) {
+            $query->where('matric_number', 'like', '%' . $filters['matric_number'] . '%');
         }
 
         if (isset($filters['name'])) {
@@ -99,8 +99,8 @@ class StudentService
             throw new \Exception('Access denied. Only PGAM and Office Assistant can create student records.');
         }
 
-        if (Student::where('student_id', $data['student_id'])->exists()) {
-            throw new \Exception('Student ID already exists.');
+        if (Student::where('matric_number', $data['matric_number'])->exists()) {
+            throw new \Exception('Student matric number already exists.');
         }
 
         Lecturer::findOrFail($data['main_supervisor_id']);

@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class StudentEvaluationImportController extends Controller
 {
@@ -227,11 +228,12 @@ class StudentEvaluationImportController extends Controller
 
     /**
      * Get import template
+     * 
      */
-    public function template(): JsonResponse
+    public function template()
     {
         try {
-            $templatePath = public_path('fses_student_evaluation_template.csv');
+            $templatePath = public_path('fses_student_evaluation_template.xlsx');
             
             if (!file_exists($templatePath)) {
                 return response()->json([
@@ -240,11 +242,14 @@ class StudentEvaluationImportController extends Controller
                 ], 404);
             }
 
-            return response()->json([
-                'success' => true,
-                'template_url' => url('fses_student_evaluation_template.csv'),
-                'filename' => 'fses_student_evaluation_template.csv'
-            ]);
+            return response()->download(
+                $templatePath,
+                'fses_student_evaluation_template.xlsx',
+                [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'Content-Disposition' => 'attachment; filename="fses_student_evaluation_template.xlsx"'
+                ]
+            );
 
         } catch (\Exception $e) {
             return response()->json([

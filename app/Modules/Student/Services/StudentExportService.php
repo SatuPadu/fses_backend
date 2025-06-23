@@ -283,51 +283,59 @@ class StudentExportService
      */
     private function exportToExcel(array $data, array $columns): array
     {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
+        try {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
 
-        // Set headers
-        $columnMap = $this->getColumnHeaders();
-        $col = 'A';
-        foreach ($columns as $column) {
-            $sheet->setCellValue($col . '1', $columnMap[$column] ?? $column);
-            $col++;
-        }
-
-        // Set data
-        $row = 2;
-        foreach ($data as $rowData) {
+            // Set headers
+            $columnMap = $this->getColumnHeaders();
             $col = 'A';
             foreach ($columns as $column) {
-                $sheet->setCellValue($col . $row, $rowData[$column]);
+                $sheet->setCellValue($col . '1', $columnMap[$column] ?? $column);
                 $col++;
             }
-            $row++;
+
+            // Set data
+            $row = 2;
+            foreach ($data as $rowData) {
+                $col = 'A';
+                foreach ($columns as $column) {
+                    $sheet->setCellValue($col . $row, $rowData[$column]);
+                    $col++;
+                }
+                $row++;
+            }
+
+            // Auto-size columns
+            foreach (range('A', $col) as $column) {
+                $sheet->getColumnDimension($column)->setAutoSize(true);
+            }
+
+            // Generate filename
+            $filename = 'student_evaluation_export_' . Carbon::now()->format('Y-m-d_H-i-s') . '.xlsx';
+            $filepath = public_path('exports/' . $filename);
+
+            // Ensure exports directory exists in public folder
+            if (!file_exists(dirname($filepath))) {
+                mkdir(dirname($filepath), 0755, true);
+            }
+
+            $writer = new Xlsx($spreadsheet);
+            $writer->save($filepath);
+
+            return [
+                'success' => true,
+                'file_path' => $filepath,
+                'filename' => $filename,
+                'download_url' => url('exports/' . $filename),
+                'content_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to create Excel file: ' . $e->getMessage()
+            ];
         }
-
-        // Auto-size columns
-        foreach (range('A', $col) as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
-        }
-
-        // Generate filename
-        $filename = 'student_evaluation_export_' . Carbon::now()->format('Y-m-d_H-i-s') . '.xlsx';
-        $filepath = storage_path('app/temp/' . $filename);
-
-        // Ensure temp directory exists
-        if (!file_exists(dirname($filepath))) {
-            mkdir(dirname($filepath), 0755, true);
-        }
-
-        $writer = new Xlsx($spreadsheet);
-        $writer->save($filepath);
-
-        return [
-            'success' => true,
-            'file_path' => $filepath,
-            'filename' => $filename,
-            'content_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        ];
     }
 
     /**

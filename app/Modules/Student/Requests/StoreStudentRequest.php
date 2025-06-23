@@ -37,7 +37,6 @@ class StoreStudentRequest extends FormRequest
             'country' => 'nullable|string|max:100',
             'main_supervisor_id' => 'required|integer|exists:lecturers,id',
             'evaluation_type' => 'required|in:FirstEvaluation,ReEvaluation',
-            'main_supervisor_id' => 'required|integer|exists:lecturers,id',
             'co_supervisor_id' => 'nullable|integer|exists:lecturers,id',
             'research_title' => 'nullable|string',
             'is_postponed' => 'boolean',
