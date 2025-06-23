@@ -5,6 +5,7 @@ use App\Modules\Evaluation\Controllers\NominationController;
 use Illuminate\Support\Facades\Route;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PasswordResetController;
+use App\Modules\Auth\Controllers\EnumController;
 use App\Modules\UserManagement\Controllers\UserController;
 use App\Modules\UserManagement\Controllers\LecturerController;
 use App\Modules\UserManagement\Controllers\RoleController;
@@ -18,6 +19,9 @@ Route::get('/status', function () {
         'status' => 'up',
     ]);
 });
+
+// Enums Routes (Public - no authentication required)
+Route::get('/enums', [EnumController::class, 'index']);
 
 // Authentication Routes
 Route::prefix('auth')->group(function () {    // Public routes

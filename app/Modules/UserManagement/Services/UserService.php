@@ -20,7 +20,7 @@ class UserService
     public function getUsers(int $numPerPage, array $request)
     {
         // Start a new query builder instance
-        $query = User::with('lecturer');
+        $query = User::with(['lecturer', 'roles']);
 
         // Apply filters to query builder
         if (isset($request['name'])) {
@@ -37,6 +37,9 @@ class UserService
 
         if (isset($request['email'])) {
             $query->where('email', 'like', '%' . $request['email'] . '%');
+        }
+        if (isset($request['is_active'])) {
+            $query->where('is_active', $request['is_active']);
         }
 
         // Apply role-based filtering
