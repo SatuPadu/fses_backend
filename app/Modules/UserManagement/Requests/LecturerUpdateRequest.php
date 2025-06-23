@@ -27,6 +27,7 @@ class LecturerUpdateRequest
             'title' => ['required', Rule::in(LecturerTitle::all())],
             'email' => ['required', Rule::unique('lecturers')->ignore($id)],
             'department' => ['required', Rule::in(Department::all())],
+            'staff_number' => ['nullable', Rule::unique('lecturers')->ignore($id)],
             'external_institution' => ['nullable'],
             'specialization' => ['nullable'],
             'phone' => ['nullable']

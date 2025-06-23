@@ -23,7 +23,7 @@ class LecturerCreateRequest
     public static function validate(Request $request): array
     {
         $validator = Validator::make($request->all(), [
-            'staff_number' => ['required', 'unique:lecturers'],
+            'staff_number' => ['nullable', 'unique:lecturers'],
             'name' => ['required'],
             'title' => ['required', Rule::in(LecturerTitle::all())],
             'email' => ['required', 'unique:lecturers'],

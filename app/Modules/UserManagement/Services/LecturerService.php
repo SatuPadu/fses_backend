@@ -208,6 +208,10 @@ class LecturerService
                 throw new Exception('Lecturer not found', 404);
             }
             
+            // Store original values for comparison
+            $originalStaffNumber = $lecturer->staff_number;
+            $originalIsFromFai = $lecturer->is_from_fai;
+            
             // Update lecturer info
             $lecturer->name = $request['name'];
             $lecturer->title = $request['title'];
@@ -217,23 +221,51 @@ class LecturerService
             $lecturer->specialization = $request['specialization'];
             $lecturer->email = $request['email'];
             $lecturer->phone = $request['phone'];
+            
+            // Update staff_number if provided
+            if (isset($request['staff_number'])) {
+                $lecturer->staff_number = $request['staff_number'];
+            }
+            
             $lecturer->save();
 
-            // If lecturer is part of FAI, update corresponding user info
-            if(isset($lecturer->is_from_fai)) {
-                $user = User::updateOrCreate(['id' => $lecturer->user_id], [
-                    'staff_number' => $lecturer->staff_number,
-                    'lecturer_id' => $lecturer->id,
-                    'name' => $request['name'],
-                    'email' => $request['email'],
-                    'password' => Hash::make( $lecturer->staff_number),
-                    'department' => $request['department'],
-                ]);
-
-                if(!isset($lecturer->user_id)) {
+            // Handle user creation/update logic
+            if ($lecturer->is_from_fai && $lecturer->staff_number) {
+                // Check if user already exists
+                if ($lecturer->user_id) {
+                    // Update existing user
+                    $user = User::find($lecturer->user_id);
+                    if ($user) {
+                        $user->update([
+                            'staff_number' => $lecturer->staff_number,
+                            'name' => $request['name'],
+                            'email' => $request['email'],
+                            'department' => $request['department'],
+                        ]);
+                    }
+                } else {
+                    // Create new user (this handles the case where lecturer had no staff_number before)
+                    $user = User::create([
+                        'staff_number' => $lecturer->staff_number,
+                        'lecturer_id' => $lecturer->id,
+                        'name' => $request['name'],
+                        'email' => $request['email'],
+                        'password' => Hash::make($lecturer->staff_number),
+                        'department' => $request['department'],
+                    ]);
+                    
+                    // Link user to lecturer
                     $lecturer->user_id = $user->id;
                     $lecturer->save();
                 }
+            } elseif (!$lecturer->is_from_fai && $lecturer->user_id) {
+                // If lecturer is no longer from FAI but has a user, delete the user
+                $user = User::find($lecturer->user_id);
+                if ($user) {
+                    $user->delete();
+                }
+                $lecturer->user_id = null;
+                $lecturer->save();
             }
 
             // Commit changes to database and return lecturer instance

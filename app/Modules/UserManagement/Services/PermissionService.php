@@ -47,7 +47,8 @@ class PermissionService
     {
         return $user->hasPermissionFor('students', 'view') || 
                $user->hasPermissionFor('students', 'create') || 
-               $user->hasPermissionFor('students', 'edit');
+               $user->hasPermissionFor('students', 'edit') ||
+               $user->hasPermissionFor('students', 'delete');
     }
 
     /**
@@ -127,9 +128,9 @@ class PermissionService
     {
         $permissions = [
             UserRole::OFFICE_ASSISTANT => [
-                'students' => ['view', 'create', 'edit', 'import'],
+                'students' => ['view', 'create', 'edit', 'delete', 'import'],
                 'users' => ['view', 'create', 'edit'],
-                'lecturers' => ['view', 'create', 'edit'],
+                'lecturers' => ['view', 'create', 'edit', 'delete'],
                 'programs' => ['view'],
             ],
             UserRole::SUPERVISOR => [
