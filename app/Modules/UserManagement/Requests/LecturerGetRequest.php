@@ -30,7 +30,9 @@ class LecturerGetRequest
             'external_institution' => ['nullable'],
             'specialization' => ['nullable'],
             'phone' => ['nullable'],
-            'per_page' => ['nullable', 'integer']
+            'per_page' => ['nullable', 'integer'],
+            'all' => ['nullable', 'string', 'in:true,false'],
+            'fai' => ['nullable', 'string', 'in:true,false']
         ]);
 
         if($validator->fails()) {

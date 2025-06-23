@@ -37,10 +37,20 @@ class LecturerController extends Controller
     public function index(Request $request): JsonResponse 
     {
         $validated_request = LecturerGetRequest::validate($request);
-        $lecturers = $this->lecturerService->getLecturers(
-            $validated_request['per_page'] ?? 10,
-            $validated_request
-        );
+        
+        // Check if FAI lecturers only are requested
+        if (isset($validated_request['fai']) && $validated_request['fai'] === 'true') {
+            $lecturers = $this->lecturerService->getFAILecturers(
+                $validated_request['per_page'] ?? 10,
+                $validated_request
+            );
+        } else {
+            $lecturers = $this->lecturerService->getLecturers(
+                $validated_request['per_page'] ?? 10,
+                $validated_request
+            );
+        }
+        
         return $this->sendResponse($lecturers, 'Lecturer list retrieved successfully!');
     }
 

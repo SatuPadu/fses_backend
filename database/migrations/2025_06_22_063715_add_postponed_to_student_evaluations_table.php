@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('student_evaluations', function (Blueprint $table) {
-            //
+            $table->dateTime('postponed_to')->nullable()->after('postponement_reason');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('student_evaluations', function (Blueprint $table) {
-            //
+            $table->dropColumn('postponed_to');
         });
     }
 };

@@ -24,7 +24,8 @@ class ProgramGetRequest
             'program_name' => ['nullable', 'string'],
             'program_code' => ['nullable', 'string'],
             'department' => ['nullable', Rule::in(Department::all())],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100']
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'all' => ['nullable', 'string', 'in:true,false']
         ]);
 
         if($validator->fails()) {

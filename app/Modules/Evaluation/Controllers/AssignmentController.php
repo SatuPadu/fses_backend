@@ -96,4 +96,29 @@ class AssignmentController extends Controller
             );
         }
     }
+
+    /**
+     * Update an existing chairperson assignment.
+     * 
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function update(Request $request, int $id): JsonResponse
+    {
+        try {
+            $validated_request = UpdateAssignmentRequest::validate($request, $id);
+            $evaluation = $this->assignmentService->assign([$validated_request]);
+
+            return $this->sendResponse($evaluation, 'Assignment updated successfully!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->sendValidationError($e->errors());
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }

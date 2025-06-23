@@ -26,7 +26,7 @@ class ProgramService
      *
      * @param int $numPerPage
      * @param array $request
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator|\Illuminate\Database\Eloquent\Collection
      */
     public function getPrograms(int $numPerPage, array $request)
     {
@@ -79,7 +79,14 @@ class ProgramService
             $query->whereRaw('1 = 0'); // This will return no results
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+        $query->orderBy('created_at', 'desc');
+
+        // Check if all=true parameter is present
+        if (isset($request['all']) && $request['all'] === 'true') {
+            return $query->get();
+        }
+
+        return $query->paginate($numPerPage);
     }
 
     /**

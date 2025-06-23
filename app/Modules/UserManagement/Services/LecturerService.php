@@ -15,7 +15,8 @@ class LecturerService
      * Returns all non-deleted Lecturer models from the database.
      * 
      * @param int $numPerPage
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @param array $request
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator|\Illuminate\Database\Eloquent\Collection
      */
     public function getLecturers(int $numPerPage, array $request)
     {
@@ -62,8 +63,6 @@ class LecturerService
         // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
-
-
 
         if (in_array('PGAM', $userRoles)) {
         }
@@ -134,8 +133,140 @@ class LecturerService
             $query->whereRaw('1 = 0'); // This will return no results
         }
 
+        $query->orderBy('created_at', 'desc');
+
+        // Check if all=true parameter is present
+        if (isset($request['all']) && $request['all'] === 'true') {
+            return $query->get();
+        }
+
         // Execute final query and returns results
-        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+        return $query->paginate($numPerPage);
+    }
+
+    /**
+     * Returns only FAI lecturers (is_from_fai = true) with optional pagination.
+     * 
+     * @param int $numPerPage
+     * @param array $request
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator|\Illuminate\Database\Eloquent\Collection
+     */
+    public function getFAILecturers(int $numPerPage, array $request)
+    {
+        // Start a new query builder instance
+        $query = Lecturer::with('user')->where('is_from_fai', true);
+
+        // Apply filters to query builder
+        if (isset($request['name'])) {
+            $query->where('name', 'like', '%' . $request['name'] . '%');
+        }
+
+        if (isset($request['title'])) {
+            $query->where('title', '=', $request['title']);
+        }
+
+        if (isset($request['department'])) {
+            $query->where('department', '=', $request['department']);
+        }
+
+        if (isset($request['staff_number'])) {
+            $query->where('staff_number', 'like', '%' . $request['staff_number'] . '%');
+        }
+
+        if (isset($request['specialization'])) {
+            $query->where('specialization', 'like', '%' . $request['specialization'] . '%');
+        }
+
+        if (isset($request['email'])) {
+            $query->where('email', 'like', '%' . $request['email'] . '%');
+        }
+
+        if (isset($request['phone'])) {
+            $query->where('phone', 'like', '%' . $request['phone'] . '%');
+        }
+
+        // Apply role-based filtering
+        $user = auth()->user();
+        $userRoles = $user->roles->pluck('role_name')->toArray();
+
+        if (in_array('PGAM', $userRoles)) {
+        }
+        elseif (in_array('OfficeAssistant', $userRoles)) {
+        }
+        // Check if user is a Program Coordinator (can only see lecturers from their department) 
+        elseif (in_array('ProgramCoordinator', $userRoles)) {
+            $query->where('department', $user->department);
+        }
+        // Check if user is a Supervisor (can only see lecturers related to their students)
+        elseif (in_array('Supervisor', $userRoles)) {
+            $query->where(function ($q) use ($user) {
+                // Can see themselves
+                $q->where('staff_number', $user->staff_number)
+                // Can see co-supervisors of their students
+                ->orWhereHas('coSupervisors', function ($coSupQ) use ($user) {
+                    $coSupQ->whereHas('student', function ($studQ) use ($user) {
+                        $studQ->whereHas('mainSupervisor', function ($mainSupQ) use ($user) {
+                            $mainSupQ->where('staff_number', $user->staff_number);
+                        });
+                    });
+                })
+                // Can see examiners of their students
+                ->orWhereHas('examinerEvaluations', function ($examQ) use ($user) {
+                    $examQ->whereHas('student', function ($studQ) use ($user) {
+                        $studQ->whereHas('mainSupervisor', function ($mainSupQ) use ($user) {
+                            $mainSupQ->where('staff_number', $user->staff_number);
+                        });
+                    });
+                })
+                // Can see chairpersons of their students
+                ->orWhereHas('chairpersonEvaluations', function ($chairQ) use ($user) {
+                    $chairQ->whereHas('student', function ($studQ) use ($user) {
+                        $studQ->whereHas('mainSupervisor', function ($mainSupQ) use ($user) {
+                            $mainSupQ->where('staff_number', $user->staff_number);
+                        });
+                    });
+                });
+            });
+        }
+        // Check if user is a Chairperson (can only see lecturers related to students they chair)
+        elseif (in_array('Chairperson', $userRoles)) {
+            $query->where(function ($q) use ($user) {
+                // Can see themselves
+                $q->where('staff_number', $user->staff_number)
+                // Can see supervisors of students they chair
+                ->orWhereHas('supervisedStudents', function ($studQ) use ($user) {
+                    $studQ->whereHas('evaluations', function ($evalQ) use ($user) {
+                        $evalQ->whereHas('chairperson', function ($chairQ) use ($user) {
+                            $chairQ->where('staff_number', $user->staff_number);
+                        });
+                    });
+                })
+                // Can see examiners of students they chair
+                ->orWhereHas('examinerEvaluations', function ($examQ) use ($user) {
+                    $examQ->whereHas('student', function ($studQ) use ($user) {
+                        $studQ->whereHas('evaluations', function ($evalQ) use ($user) {
+                            $evalQ->whereHas('chairperson', function ($chairQ) use ($user) {
+                                $chairQ->where('staff_number', $user->staff_number);
+                            });
+                        });
+                    });
+                });
+            });
+        }
+        // Default: no access (empty result)
+        else {
+            $query->whereRaw('1 = 0'); // This will return no results
+        }
+
+        $query->orderBy('created_at', 'desc');
+
+        // Check if all=true parameter is present
+        if (isset($request['all']) && $request['all'] === 'true') {
+            return $query->get();
+        }
+
+        // Execute final query and returns results
+        return $query->paginate($numPerPage);
     }
 
     /**
