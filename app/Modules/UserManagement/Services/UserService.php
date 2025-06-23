@@ -42,6 +42,10 @@ class UserService
             $query->where('is_active', $request['is_active']);
         }
 
+        if (isset($request['role'])) {
+            $query->byRole($request['role']);
+        }
+
         // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
@@ -127,7 +131,7 @@ class UserService
         }
 
         // Execute final query and returns results
-        return $query->paginate($numPerPage);
+        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
     }
 
     /**

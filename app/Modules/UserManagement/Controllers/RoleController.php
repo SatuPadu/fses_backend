@@ -2,12 +2,13 @@
 
 namespace App\Modules\UserManagement\Controllers;
 
+use App\Http\Controllers\Controller;
+use App\Modules\UserManagement\Services\RoleService;
+use App\Modules\UserManagement\Requests\AssignPGAMRoleRequest;
+use App\Modules\UserManagement\Requests\CheckPermissionRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use App\Http\Controllers\Controller;
-use App\Modules\UserManagement\Models\Role;
-use App\Modules\UserManagement\Services\PermissionService;
-use App\Helpers\PermissionHelper;
+use Illuminate\Http\Response;
 
 /**
  * @OA\Tag(
@@ -17,229 +18,145 @@ use App\Helpers\PermissionHelper;
  */
 class RoleController extends Controller
 {
-    use PermissionHelper;
+    protected $roleService;
 
-    protected $permissionService;
-
-    public function __construct(PermissionService $permissionService)
+    public function __construct(RoleService $roleService)
     {
-        $this->permissionService = $permissionService;
+        $this->roleService = $roleService;
     }
 
     /**
      * Get all roles
+     *
+     * @return JsonResponse
      */
     public function index(): JsonResponse
     {
         try {
-            // Check if user has permission to view roles
-            if (!$this->userCan('users', 'view')) {
-                return $this->sendError('Access denied. Insufficient permissions.', [], 403);
-            }
-
-            $roles = Role::with('users')->get();
-
-            return $this->sendResponse($roles, 'Roles retrieved successfully.');
+            $roles = $this->roleService->getAllRoles();
+            return $this->sendResponse($roles, 'Roles retrieved successfully');
         } catch (\Exception $e) {
-            return $this->sendError('Failed to retrieve roles.', ['error' => $e->getMessage()], 500);
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
     /**
      * Get a specific role
+     *
+     * @param int $id
+     * @return JsonResponse
      */
     public function show(int $id): JsonResponse
     {
         try {
-            // Check if user has permission to view roles
-            if (!$this->userCan('users', 'view')) {
-                return $this->sendError('Access denied. Insufficient permissions.', [], 403);
-            }
-
-            $role = Role::with('users')->find($id);
-
+            $role = $this->roleService->getRoleById($id);
+            
             if (!$role) {
-                return $this->sendError('Role not found.', [], 404);
+                return $this->sendError(
+                    'Role not found',
+                    ['error' => 'Role does not exist'],
+                    Response::HTTP_NOT_FOUND
+                );
             }
 
-            return $this->sendResponse($role, 'Role retrieved successfully.');
+            return $this->sendResponse($role, 'Role retrieved successfully');
         } catch (\Exception $e) {
-            return $this->sendError('Failed to retrieve role.', ['error' => $e->getMessage()], 500);
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
     /**
-     * Get current user's permissions
+     * Get current user's permissions and capabilities
+     *
+     * @return JsonResponse
      */
-    public function myPermissions(): JsonResponse
+    public function getUserPermissions(): JsonResponse
     {
         try {
-            $user = auth()->user();
-            
-            if (!$user) {
-                return $this->sendError('User not authenticated.', [], 401);
-            }
-
-            $permissions = $user->permissions;
-            $roles = $user->roles;
-            $accessibleModules = $this->permissionService->getUserAccessibleModules($user);
-
-            return $this->sendResponse([
-                'permissions' => $permissions,
-                'roles' => $roles,
-                'accessible_modules' => $accessibleModules,
-                'capabilities' => [
-                    'can_manage_students' => $this->canManageStudents(),
-                    'can_manage_users' => $this->canManageUsers(),
-                    'can_nominate_examiners' => $this->canNominateExaminers(),
-                    'can_assign_chairpersons' => $this->canAssignChairpersons(),
-                    'can_lock_nominations' => $this->canLockNominations(),
-                    'can_view_reports' => $this->canViewReports(),
-                    'can_manage_programs' => $this->canManagePrograms(),
-                    'can_manage_lecturers' => $this->canManageLecturers(),
-                ]
-            ], 'User permissions retrieved successfully.');
+            $permissions = $this->roleService->getUserPermissions();
+            return $this->sendResponse($permissions, 'User permissions retrieved successfully');
         } catch (\Exception $e) {
-            return $this->sendError('Failed to retrieve user permissions.', ['error' => $e->getMessage()], 500);
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
     /**
      * Check if user has specific permission
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function checkPermission(Request $request): JsonResponse
     {
         try {
-            $request->validate([
-                'module' => 'required|string',
-                'action' => 'required|string'
-            ]);
-
-            $module = $request->input('module');
-            $action = $request->input('action');
-
-            $hasPermission = $this->userCan($module, $action);
-
-            return $this->sendResponse([
-                'has_permission' => $hasPermission,
-                'module' => $module,
-                'action' => $action
-            ], 'Permission check completed.');
+            $validated = CheckPermissionRequest::validate($request);
+            $result = $this->roleService->checkUserPermission(
+                $validated['module'],
+                $validated['action']
+            );
+            return $this->sendResponse($result, 'Permission check completed');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->sendValidationError($e->errors());
         } catch (\Exception $e) {
-            return $this->sendError('Failed to check permission.', ['error' => $e->getMessage()], 500);
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
     /**
      * Assign PGAM role to a user
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function assignPGAMRole(Request $request): JsonResponse
     {
         try {
-            // Check if user has permission to manage users
-            if (!$this->userCan('users', 'edit')) {
-                return $this->sendError('Access denied. Insufficient permissions.', [], 403);
-            }
-
-            $request->validate([
-                'user_id' => 'required|integer|exists:users,id'
-            ]);
-
-            $userId = $request->input('user_id');
-            $user = \App\Modules\Auth\Models\User::findOrFail($userId);
-            
-            // Get PGAM role
-            $pgamRole = Role::findByName('PGAM');
-            
-            if (!$pgamRole) {
-                return $this->sendError('PGAM role not found.', [], 404);
-            }
-
-            // Check if user already has PGAM role
-            if ($user->hasRole('PGAM')) {
-                return $this->sendError('User already has PGAM role.', [], 400);
-            }
-
-            // Assign PGAM role to user
-            $user->roles()->attach($pgamRole->id);
-
-            return $this->sendResponse([
-                'user_id' => $user->id,
-                'user_name' => $user->name,
-                'role_assigned' => 'PGAM'
-            ], 'PGAM role assigned successfully.');
+            $validated = AssignPGAMRoleRequest::validate($request);
+            $result = $this->roleService->assignPGAMRole($validated['user_id']);
+            return $this->sendResponse($result, 'PGAM role assigned successfully');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->sendValidationError($e->errors());
         } catch (\Exception $e) {
-            return $this->sendError('Failed to assign PGAM role.', ['error' => $e->getMessage()], 500);
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
     /**
-     * Get PGAM user details with lecturer data
+     * Get PGAM users
+     *
+     * @return JsonResponse
      */
-    public function getPGAMUser(): JsonResponse
+    public function getPGAMUsers(): JsonResponse
     {
         try {
-            // Check if user has permission to view users
-            if (!$this->userCan('users', 'view')) {
-                return $this->sendError('Access denied. Insufficient permissions.', [], 403);
-            }
-
-            // Get PGAM role
-            $pgamRole = Role::findByName('PGAM');
-            
-            if (!$pgamRole) {
-                return $this->sendError('PGAM role not found.', [], 404);
-            }
-
-            // Get users with PGAM role and their lecturer data
-            $pgamUsers = $pgamRole->users()
-                ->with(['lecturer', 'roles'])
-                ->get()
-                ->map(function ($user) {
-                    return [
-                        'id' => $user->id,
-                        'staff_number' => $user->staff_number,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'department' => $user->department,
-                        'is_active' => $user->is_active,
-                        'is_password_updated' => $user->is_password_updated,
-                        'last_login' => $user->last_login,
-                        'created_at' => $user->created_at,
-                        'updated_at' => $user->updated_at,
-                        'lecturer' => $user->lecturer ? [
-                            'id' => $user->lecturer->id,
-                            'name' => $user->lecturer->name,
-                            'email' => $user->lecturer->email,
-                            'staff_number' => $user->lecturer->staff_number,
-                            'phone' => $user->lecturer->phone,
-                            'department' => $user->lecturer->department,
-                            'title' => $user->lecturer->title,
-                            'is_from_fai' => $user->lecturer->is_from_fai,
-                            'external_institution' => $user->lecturer->external_institution,
-                            'specialization' => $user->lecturer->specialization,
-                            'created_at' => $user->lecturer->created_at,
-                            'updated_at' => $user->lecturer->updated_at,
-                        ] : null,
-                        'roles' => $user->roles->map(function ($role) {
-                            return [
-                                'id' => $role->id,
-                                'role_name' => $role->role_name,
-                                'description' => $role->description,
-                                'permissions' => $role->permissions,
-                            ];
-                        })
-                    ];
-                });
-
-            return $this->sendResponse([
-                'pgam_users' => $pgamUsers,
-                'total_count' => $pgamUsers->count()
-            ], 'PGAM users retrieved successfully.');
+            $result = $this->roleService->getPGAMUsers();
+            return $this->sendResponse($result, 'PGAM users retrieved successfully');
         } catch (\Exception $e) {
-            return $this->sendError('Failed to retrieve PGAM users.', ['error' => $e->getMessage()], 500);
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 } 

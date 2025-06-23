@@ -135,7 +135,7 @@ class LecturerService
         }
 
         // Execute final query and returns results
-        return $query->paginate($numPerPage);
+        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Modules\UserManagement\Requests;
 
 use App\Enums\Department;
 use App\Enums\LecturerTitle;
+use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
@@ -29,6 +30,7 @@ class UserGetRequest
             'department' => ['nullable', Rule::in(Department::all())],
             'is_active' => ['nullable', 'boolean'],
             'is_password_updated' => ['nullable', 'boolean'],
+            'role' => ['nullable', Rule::in(UserRole::all())],
             'per_page' => ['nullable', 'integer']
         ]);
 

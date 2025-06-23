@@ -90,7 +90,7 @@ class StudentService
             $query->whereRaw('1 = 0'); // This will return no results
         }
 
-        return $query->paginate($numPerPage);
+        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
     }
 
     /**

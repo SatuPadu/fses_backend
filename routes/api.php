@@ -73,10 +73,10 @@ Route::prefix('users')->middleware(['jwt.verify', 'password.updated', 'permissio
 Route::prefix('roles')->middleware(['jwt.verify', 'password.updated', 'permission:users,view'])->group(function () {
     Route::get('/', [RoleController::class, 'index']);
     Route::get('/{id}', [RoleController::class, 'show']);
-    Route::get('/my/permissions', [RoleController::class, 'myPermissions']);
+    Route::get('/my/permissions', [RoleController::class, 'getUserPermissions']);
     Route::post('/check-permission', [RoleController::class, 'checkPermission']);
     Route::post('/assign-pgam', [RoleController::class, 'assignPGAMRole'])->middleware('permission:users,edit');
-    Route::get('/pgam/users', [RoleController::class, 'getPGAMUser']);
+    Route::get('/pgam/users', [RoleController::class, 'getPGAMUsers']);
 });
 
 // Student Management Routes (Protected by JWT middleware)
