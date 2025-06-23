@@ -107,7 +107,9 @@ class AssignmentController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         try {
+            
             $validated_request = UpdateAssignmentRequest::validate($request, $id);
+            
             $evaluation = $this->assignmentService->assign([$validated_request]);
 
             return $this->sendResponse($evaluation, 'Assignment updated successfully!');

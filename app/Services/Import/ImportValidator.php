@@ -12,8 +12,6 @@ class ImportValidator
 {
     public function validateRow($row, $rowNumber)
     {
-        Log::info("Validating row {$rowNumber}", ['row' => $row]);
-        
         $requiredFields = [
             'student_matric_number', 'student_name', 'student_email', 'program_name',
             'current_semester', 'student_department', 'evaluation_type',
@@ -30,8 +28,6 @@ class ImportValidator
                 throw new \Exception("Required field '{$field}' is missing or empty");
             }
         }
-
-        Log::info("Required fields validation passed for row {$rowNumber}");
 
         // Validate enum values
         if (!Department::isValid($row['student_department'])) {
@@ -60,7 +56,5 @@ class ImportValidator
             ]);
             throw new \Exception("Invalid nomination status: {$row['nomination_status']}");
         }
-
-        Log::info("All validation passed for row {$rowNumber}");
     }
 } 

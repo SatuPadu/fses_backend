@@ -36,31 +36,15 @@ class ImportStudentEvaluationJob implements ShouldQueue
 
     public function handle()
     {
-        Log::info("ImportStudentEvaluationJob started", [
-            'filePath' => $this->filePath,
-            'userId' => $this->userId,
-            'importId' => $this->importId
-        ]);
-
         try {
             // Test database connection
-            Log::info("Testing database connection");
             DB::connection()->getPdo();
-            Log::info("Database connection successful");
 
             // Test model access
-            Log::info("Testing model access");
             $programCount = \App\Modules\Program\Models\Program::count();
             $lecturerCount = \App\Modules\UserManagement\Models\Lecturer::count();
             $studentCount = \App\Modules\Student\Models\Student::count();
             $evaluationCount = \App\Modules\Evaluation\Models\Evaluation::count();
-            
-            Log::info("Model access successful", [
-                'programs' => $programCount,
-                'lecturers' => $lecturerCount,
-                'students' => $studentCount,
-                'evaluations' => $evaluationCount
-            ]);
 
             // Check if file exists
             if (!file_exists($this->filePath)) {
@@ -71,8 +55,6 @@ class ImportStudentEvaluationJob implements ShouldQueue
             if (!is_readable($this->filePath)) {
                 throw new \Exception("File not readable: {$this->filePath}");
             }
-
-            Log::info("File validation passed", ['filePath' => $this->filePath]);
             
             $this->processImport();
         } catch (\Exception $e) {
@@ -88,17 +70,13 @@ class ImportStudentEvaluationJob implements ShouldQueue
 
     protected function processImport()
     {
-        Log::info("Starting processImport method");
-        
         $progressTracker = new ImportProgressTracker($this->importId);
         $dataProcessor = new ImportDataProcessor($progressTracker);
         $validator = new ImportValidator();
 
         $progressTracker->updateStatus('processing', 'Starting import process...');
 
-        Log::info("Reading file");
         $csvData = $this->readFile();
-        Log::info("File read successfully", ['rowCount' => count($csvData)]);
         
         $totalRows = count($csvData);
         $processedRows = 0;
@@ -128,19 +106,12 @@ class ImportStudentEvaluationJob implements ShouldQueue
                 $progressTracker->updateProgress($processedRows, $totalRows, "Processing row {$processedRows} of {$totalRows}");
 
                 try {
-                    Log::info("Processing row {$processedRows}", [
-                        'rowData' => $row,
-                        'rowIndex' => $rowIndex
-                    ]);
-                    
                     // Validate row
                     $validator->validateRow($row, $rowIndex + 2);
-                    Log::info("Row {$processedRows} validation passed");
                     
                     // Process row
                     $rowResult = $dataProcessor->processRow($row, $rowIndex + 2);
                     $successCount++;
-                    Log::info("Row {$processedRows} processing completed", ['result' => $rowResult]);
                     
                     // Update summary counts
                     foreach ($rowResult as $key => $value) {
@@ -178,7 +149,6 @@ class ImportStudentEvaluationJob implements ShouldQueue
     protected function readFile()
     {
         $fileExtension = strtolower(pathinfo($this->filePath, PATHINFO_EXTENSION));
-        Log::info("Reading file", ['filePath' => $this->filePath, 'extension' => $fileExtension]);
 
         if ($fileExtension === 'csv') {
             return $this->readCsvFile();
@@ -189,8 +159,6 @@ class ImportStudentEvaluationJob implements ShouldQueue
 
     protected function readCsvFile()
     {
-        Log::info("Reading CSV file");
-        
         $file = fopen($this->filePath, 'r');
         if (!$file) {
             throw new \Exception("Could not open file: {$this->filePath}");
@@ -205,8 +173,6 @@ class ImportStudentEvaluationJob implements ShouldQueue
             fclose($file);
             throw new \Exception("Could not read headers from CSV file");
         }
-
-        Log::info("CSV headers read", ['headers' => $headers]);
         
         $data = [];
 
@@ -218,11 +184,6 @@ class ImportStudentEvaluationJob implements ShouldQueue
             
             // Ensure headers and row have the same number of elements
             if (count($headers) !== count($row)) {
-                Log::warning("Row has different number of columns than headers", [
-                    'headersCount' => count($headers),
-                    'rowCount' => count($row),
-                    'row' => $row
-                ]);
                 // Pad or truncate row to match headers
                 if (count($row) < count($headers)) {
                     $row = array_pad($row, count($headers), '');
@@ -236,14 +197,11 @@ class ImportStudentEvaluationJob implements ShouldQueue
 
         fclose($file);
         
-        Log::info("CSV data read successfully", ['rowCount' => count($data)]);
         return $data;
     }
 
     protected function readExcelFile()
     {
-        Log::info("Reading Excel file");
-        
         try {
             $spreadsheet = IOFactory::load($this->filePath);
             $worksheet = $spreadsheet->getActiveSheet();
@@ -257,8 +215,6 @@ class ImportStudentEvaluationJob implements ShouldQueue
             if (!$headers) {
                 throw new \Exception("Could not read headers from Excel file");
             }
-
-            Log::info("Excel headers read", ['headers' => $headers]);
             
             $data = [];
 
@@ -270,11 +226,6 @@ class ImportStudentEvaluationJob implements ShouldQueue
                 
                 // Ensure headers and row have the same number of elements
                 if (count($headers) !== count($row)) {
-                    Log::warning("Row has different number of columns than headers", [
-                        'headersCount' => count($headers),
-                        'rowCount' => count($row),
-                        'row' => $row
-                    ]);
                     // Pad or truncate row to match headers
                     if (count($row) < count($headers)) {
                         $row = array_pad($row, count($headers), '');
@@ -286,7 +237,6 @@ class ImportStudentEvaluationJob implements ShouldQueue
                 $data[] = array_combine($headers, $row);
             }
 
-            Log::info("Excel data read successfully", ['rowCount' => count($data)]);
             return $data;
 
         } catch (\Exception $e) {
