@@ -60,8 +60,8 @@
         <h3>Student Information:</h3>
         <div class="info-box">
             <p><strong>Student Name:</strong> {{ $student->name }}</p>
-            <p><strong>Student ID:</strong> {{ $student->student_id }}</p>
-            <p><strong>Program:</strong> {{ $student->program->name ?? 'N/A' }}</p>
+            <p><strong>Student ID:</strong> {{ $student->matric_number }}</p>
+            <p><strong>Program:</strong> {{ $student->program->program_name ?? 'N/A' }}</p>
             <p><strong>Department:</strong> {{ $student->department }}</p>
         </div>
         

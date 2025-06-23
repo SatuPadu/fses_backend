@@ -24,7 +24,7 @@ class StudentService
      */
     public function getAllStudents(int $numPerPage, array $filters)
     {
-        $query = Student::query();
+        $query = Student::with(['program', 'mainSupervisor']);
 
         // Apply filter by program if provided
         if (isset($filters['program'])) {
@@ -132,7 +132,7 @@ class StudentService
      */
     public function getStudentById(int $id): Student
     {
-        $student = Student::findOrFail($id);
+        $student = Student::with(['program', 'mainSupervisor'])->findOrFail($id);
         
         // Apply role-based access control
         $user = auth()->user();

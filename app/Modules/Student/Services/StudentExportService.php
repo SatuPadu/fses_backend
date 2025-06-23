@@ -200,10 +200,10 @@ class StudentExportService
                 return $student->pd ?? '';
             
             case 'kod_program':
-                return $student->program->code ?? '';
+                return $student->program->program_code ?? '';
             
             case 'nama_program':
-                return $student->program->name ?? '';
+                return $student->program->program_name ?? '';
             
             case 'penyelia':
                 $supervisor = $student->mainSupervisor;
