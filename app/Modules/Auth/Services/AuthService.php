@@ -36,11 +36,14 @@ class AuthService
                 $user->failed_login_attempts += 1;
                 
                 // Lock account if 3 failed attempts
-                if ($user->failed_login_attempts >= 2) {
+                if ($user->failed_login_attempts > 2) {
                     $user->is_active = false;
                 }
                 
                 $user->save();
+            }
+            if ($user->failed_login_attempts > 2) {
+                throw new \Exception('Account is locked due to multiple failed login attempts with wrong password. Please contact administrator.');
             }
             throw new \Exception('Invalid credentials provided.');
         }

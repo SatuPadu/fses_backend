@@ -82,7 +82,7 @@ class StudentExportService
         }
         // Check if user is a Program Coordinator (can only see users from their department) 
         elseif (in_array('ProgramCoordinator', $userRoles)) {
-            $query->where('program.department', $user->department);
+            $query->where('department', $user->department);
         }
         // Check if user is a Supervisor (can only see their supervised students)
         elseif (in_array('Supervisor', $userRoles)) {
@@ -104,41 +104,41 @@ class StudentExportService
         }
 
         // Apply additional filters
-        if (!empty($filters['program_id'])) {
+        if (!empty($filters['program_id']) && is_numeric($filters['program_id'])) {
             $query->where('program_id', $filters['program_id']);
         }
 
-        if (!empty($filters['status'])) {
+        if (!empty($filters['status']) && is_string($filters['status'])) {
             $query->where('status_re_pd', $filters['status']);
         }
 
-        if (!empty($filters['evaluation_type'])) {
+        if (!empty($filters['evaluation_type']) && is_string($filters['evaluation_type'])) {
             $query->where('evaluation_type', $filters['evaluation_type']);
         }
 
-        if (!empty($filters['is_postponed'])) {
+        if (isset($filters['is_postponed']) && is_bool($filters['is_postponed'])) {
             $query->whereHas('evaluations', function ($q) use ($filters) {
                 $q->where('is_postponed', $filters['is_postponed']);
             });
         }
 
-        if (!empty($filters['semester'])) {
+        if (!empty($filters['semester']) && is_string($filters['semester'])) {
             $query->whereHas('evaluations', function ($q) use ($filters) {
                 $q->where('semester', 'like', '%' . $filters['semester'] . '%');
             });
         }
 
-        if (!empty($filters['academic_year'])) {
+        if (!empty($filters['academic_year']) && is_string($filters['academic_year'])) {
             $query->whereHas('evaluations', function ($q) use ($filters) {
                 $q->where('academic_year', 'like', '%' . $filters['academic_year'] . '%');
             });
         }
 
-        if (!empty($filters['supervisor_id'])) {
+        if (!empty($filters['supervisor_id']) && is_numeric($filters['supervisor_id'])) {
             $query->where('main_supervisor_id', $filters['supervisor_id']);
         }
 
-        if (!empty($filters['coordinator_id'])) {
+        if (!empty($filters['coordinator_id']) && is_numeric($filters['coordinator_id'])) {
             $query->whereHas('program', function ($q) use ($filters) {
                 $q->where('coordinator_id', $filters['coordinator_id']);
             });
