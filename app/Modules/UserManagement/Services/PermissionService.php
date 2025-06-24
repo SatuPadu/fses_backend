@@ -129,7 +129,7 @@ class PermissionService
         $permissions = [
             UserRole::OFFICE_ASSISTANT => [
                 'students' => ['view', 'create', 'edit', 'delete', 'import'],
-                'users' => ['view', 'create', 'edit'],
+                'users' => ['view', 'create', 'edit', 'delete'],
                 'lecturers' => ['view', 'create', 'edit', 'delete'],
                 'programs' => ['view'],
             ],

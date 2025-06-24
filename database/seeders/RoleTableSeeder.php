@@ -45,7 +45,7 @@ class RoleTableSeeder extends Seeder
                 'description' => UserRole::getDescription(UserRole::OFFICE_ASSISTANT),
                 'permissions' => [
                     'students' => ['view', 'create', 'edit', 'delete', 'import'],
-                    'users' => ['view', 'create', 'edit'],
+                    'users' => ['view', 'create', 'edit', 'delete'],
                     'lecturers' => ['view', 'create', 'edit', 'delete'],
                     'programs' => ['view'],
                 ]
