@@ -80,16 +80,16 @@
         <h3>Committee Members:</h3>
         <div class="info-box">
             @if($evaluation->examiner1)
-                <p><strong>Examiner 1:</strong>{{ $evaluation->examiner1->title }} {{ $evaluation->examiner1->name }}</p>
+                <p><strong>Examiner 1:</strong> {{ $evaluation->examiner1->title }} {{ $evaluation->examiner1->name }}</p>
             @endif
             @if($evaluation->examiner2)
-                <p><strong>Examiner 2:</strong>{{ $evaluation->examiner2->title }} {{ $evaluation->examiner2->name }}</p>
+                <p><strong>Examiner 2:</strong> {{ $evaluation->examiner2->title }} {{ $evaluation->examiner2->name }}</p>
             @endif
             @if($evaluation->examiner3)
-                <p><strong>Examiner 3:</strong>{{ $evaluation->examiner3->title }} {{ $evaluation->examiner3->name }}</p>
+                <p><strong>Examiner 3:</strong> {{ $evaluation->examiner3->title }} {{ $evaluation->examiner3->name }}</p>
             @endif
             @if($evaluation->chairperson)
-                <p><strong>Chairperson:</strong>{{ $evaluation->chairperson->title }} {{ $evaluation->chairperson->name }}</p>
+                <p><strong>Chairperson:</strong> {{ $evaluation->chairperson->title }} {{ $evaluation->chairperson->name }}</p>
             @endif
         </div>
         
