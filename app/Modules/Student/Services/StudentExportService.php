@@ -1,16 +1,7 @@
 <?php
 
 namespace App\Modules\Student\Services;
-
-use App\Modules\Evaluation\Models\Evaluation;
-use App\Modules\Evaluation\Models\Supervisor;
-use App\Modules\Evaluation\Models\Examiner;
-use App\Modules\Evaluation\Models\Chairperson;
-use App\Modules\Evaluation\Models\CoSupervisor;
-use App\Modules\Program\Models\Program;
 use App\Modules\Student\Models\Student;
-use App\Modules\UserManagement\Models\Lecturer;
-use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Writer\Csv;
@@ -18,7 +9,6 @@ use PhpOffice\PhpPresentation\PhpPresentation;
 use PhpOffice\PhpPresentation\Style\Alignment;
 use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Style\Fill;
-use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class StudentExportService

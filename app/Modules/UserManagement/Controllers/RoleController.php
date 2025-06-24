@@ -54,7 +54,7 @@ class RoleController extends Controller
     {
         try {
             $role = $this->roleService->getRoleById($id);
-            
+
             if (!$role) {
                 return $this->sendError(
                     'Role not found',

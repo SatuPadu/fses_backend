@@ -85,11 +85,11 @@ class StudentExportTest extends TestCase
         $user->roles()->attach(3); // Program Coordinator role
 
         $requestData = [
-            'columns' => ['bil', 'nama', 'no_matrik'],
-            'format' => 'excel',
-            'filters' => [
+                'columns' => ['bil', 'nama', 'no_matrik'],
+                'format' => 'excel',
+                'filters' => [
                 'program_id' => $program->id
-            ]
+                ]
         ];
 
         $response = $this->actingAs($user, 'api')

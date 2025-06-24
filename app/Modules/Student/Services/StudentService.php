@@ -3,10 +3,7 @@
 namespace App\Modules\Student\Services;
 
 use App\Modules\Student\Models\Student;
-use App\Modules\Student\Imports\StudentsImport;
 use App\Modules\UserManagement\Models\Lecturer;
-use Illuminate\Http\UploadedFile;
-use Maatwebsite\Excel\Facades\Excel;
 
 class StudentService
 {
@@ -53,6 +50,10 @@ class StudentService
 
         if (isset($filters['supervisor_id'])) {
             $query->where('main_supervisor_id', $filters['supervisor_id']);
+        }
+
+        if (isset($filters['with_evaluation']) && filter_var($filters['with_evaluation'], FILTER_VALIDATE_BOOLEAN)) {
+            $query->with(['evaluations']);
         }
 
         // Apply role-based filtering
@@ -120,8 +121,6 @@ class StudentService
         return Student::create($data);
     }
 
-
-
     /**
      * Get a specific student by ID with role-based access control.
      *
@@ -132,7 +131,7 @@ class StudentService
      */
     public function getStudentById(int $id): Student
     {
-        $student = Student::with(['program', 'mainSupervisor'])->findOrFail($id);
+        $student = Student::with(['program', 'mainSupervisor', 'evaluations'])->findOrFail($id);
         
         // Apply role-based access control
         $user = auth()->user();

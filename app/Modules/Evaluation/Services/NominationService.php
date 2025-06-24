@@ -58,9 +58,6 @@ class NominationService
             if ($examiner2->id == $supervisor->id) {
                 throw new Exception('Examiner 2 must not be the main supervisor of the student!');
             }
-            else if ($examiner2->title == LecturerTitle::DR) {
-                throw new Exception('Examiner 2 must be at least an Assoc Prof!');
-            }
         }
 
         // Examiner 3 validation
@@ -153,7 +150,7 @@ class NominationService
     public function postpone(array $request): Evaluation
     {
         return DB::transaction(function () use ($request) {
-            $evaluation = Evaluation::with(['student', 'examiner1', 'examiner2', 'examiner3', 'chairperson'])->findOrFail($request['evaluation_id']);
+            $evaluation = Evaluation::with(['student.program', 'student.mainSupervisor', 'student.coSupervisors.lecturer', 'examiner1', 'examiner2', 'examiner3', 'chairperson'])->findOrFail($request['evaluation_id']);
             
             $evaluation->nomination_status = NominationStatus::POSTPONED;
             $evaluation->is_postponed = true;
@@ -267,7 +264,7 @@ class NominationService
      */
     public function getNominations(int $numPerPage, array $filters)
     {
-        $query = Evaluation::with(['student', 'examiner1', 'examiner2', 'examiner3', 'chairperson']);
+        $query = Evaluation::with(['student.program', 'student.mainSupervisor', 'student.coSupervisors.lecturer', 'examiner1', 'examiner2', 'examiner3', 'chairperson']);
 
         // Apply filters
         if (isset($filters['student_id'])) {
@@ -326,5 +323,19 @@ class NominationService
         }
 
         return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+    }
+
+    /**
+     * Get unique academic years from evaluations table.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getUniqueAcademicYears()
+    {
+        return Evaluation::select('academic_year')
+            ->distinct()
+            ->whereNotNull('academic_year')
+            ->orderBy('academic_year', 'desc')
+            ->pluck('academic_year');
     }
 }

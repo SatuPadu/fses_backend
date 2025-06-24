@@ -10,6 +10,7 @@ use App\Modules\Evaluation\Services\NominationService;
 use App\Modules\Evaluation\Requests\StoreNominationRequest;
 use App\Modules\Evaluation\Requests\UpdateNominationRequest;
 use App\Modules\Evaluation\Requests\PostponeNominationRequest;
+use App\Modules\Evaluation\Requests\LockNominationsRequest;
 
 class NominationController extends Controller
 {
@@ -58,7 +59,7 @@ class NominationController extends Controller
     {
         try {
             $validated_request = UpdateNominationRequest::validate($request, $evaluationId);
-            $evaluation = $this->nominationService->updateNomination( $validated_request);
+            $evaluation = $this->nominationService->updateNomination($validated_request);
 
             return $this->sendResponse($evaluation, 'Nomination updated successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -174,10 +175,7 @@ class NominationController extends Controller
     public function lockNominations(Request $request): JsonResponse
     {
         try {
-            $validated_request = $request->validate([
-                'evaluation_ids' => ['required', 'array'],
-                'evaluation_ids.*' => ['required', 'exists:student_evaluations,id'],
-            ]);
+            $validated_request = LockNominationsRequest::validate($request);
 
             $lockedCount = $this->nominationService->lockNominations($validated_request['evaluation_ids']);
 
@@ -187,6 +185,45 @@ class NominationController extends Controller
             );
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->sendValidationError($e->errors());
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    /**
+     * Get unique academic years from evaluations.
+     * 
+     * @OA\Get(
+     *     path="/api/evaluations/nominations/academic-years",
+     *     summary="Get unique academic years",
+     *     description="Retrieve all unique academic years from the evaluations table",
+     *     tags={"Evaluations"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Academic years retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="string", example="2024/2025")),
+     *             @OA\Property(property="message", type="string", example="Academic years retrieved successfully!")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error"
+     *     )
+     * )
+     * 
+     * @return JsonResponse
+     */
+    public function getAcademicYears(): JsonResponse
+    {
+        try {
+            $academicYears = $this->nominationService->getUniqueAcademicYears();
+            return $this->sendResponse($academicYears, 'Academic years retrieved successfully!');
         } catch (\Exception $e) {
             return $this->sendError(
                 'An unexpected error occurred. Please try again later.',

@@ -11,7 +11,9 @@ use App\Modules\UserManagement\Controllers\LecturerController;
 use App\Modules\UserManagement\Controllers\RoleController;
 use App\Modules\Student\Controllers\StudentController;
 use App\Modules\Student\Controllers\StudentEvaluationImportController;
+use App\Modules\Evaluation\Controllers\ExaminerSuggestionController;
 use App\Modules\Program\Controllers\ProgramController;
+use App\Modules\Student\Controllers\StudentExportController;
 
 // API Health Check
 Route::get('/status', function () {
@@ -22,6 +24,7 @@ Route::get('/status', function () {
 
 // Enums Routes (Public - no authentication required)
 Route::get('/enums', [EnumController::class, 'index']);
+Route::get('/academic-years', [NominationController::class, 'getAcademicYears']);
 
 // Authentication Routes
 Route::prefix('auth')->group(function () {    // Public routes
@@ -51,7 +54,6 @@ Route::prefix('password')->group(function () {
     Route::post('reset', [PasswordResetController::class, 'resetPassword'])
         ->middleware('throttle:5,1');
 });
-
 // User Management Routes - Lecturers (Office Assistant, Program Coordinator, PGAM)
 Route::prefix('lecturers')->middleware(['jwt.verify', 'password.updated', 'permission:lecturers,view'])->group(function () {
     Route::get('/', [LecturerController::class, 'index']);
@@ -127,6 +129,13 @@ Route::prefix('evaluations')->middleware(['jwt.verify', 'password.updated', 'per
     });
 });
 
+// Examiner Suggestions Routes (Supervisor, Program Coordinator, PGAM)
+Route::prefix('examiner-suggestions')->middleware(['jwt.verify', 'password.updated', 'permission:evaluations,view'])->group(function () {
+    Route::get('/examiner1/{studentId}', [ExaminerSuggestionController::class, 'getExaminer1Suggestions']);
+    Route::get('/examiner2/{studentId}', [ExaminerSuggestionController::class, 'getExaminer2Suggestions']);
+    Route::get('/examiner3/{studentId}', [ExaminerSuggestionController::class, 'getExaminer3Suggestions']);
+});
+
 // Reports Routes (Program Coordinator, PGAM)
 Route::prefix('reports')->middleware(['jwt.verify', 'password.updated', 'permission:reports,view'])->group(function () {
     Route::get('/statistics', function () {
@@ -153,7 +162,7 @@ Route::prefix('settings')->middleware(['jwt.verify', 'password.updated', 'role:P
 
 // Student Export Routes
 Route::middleware(['jwt.verify', 'password.updated', 'permission:students,export'])->group(function () {
-    Route::post('/students/export', [App\Modules\Student\Controllers\StudentExportController::class, 'export']);
+    Route::post('/students/export', [StudentExportController::class, 'export']);
 });
 
 Route::fallback(function () {

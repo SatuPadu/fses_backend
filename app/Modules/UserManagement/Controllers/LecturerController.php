@@ -45,10 +45,10 @@ class LecturerController extends Controller
                 $validated_request
             );
         } else {
-            $lecturers = $this->lecturerService->getLecturers(
-                $validated_request['per_page'] ?? 10,
-                $validated_request
-            );
+        $lecturers = $this->lecturerService->getLecturers(
+            $validated_request['per_page'] ?? 10,
+            $validated_request
+        );
         }
         
         return $this->sendResponse($lecturers, 'Lecturer list retrieved successfully!');

@@ -2,17 +2,10 @@
 
 namespace App\Modules\Student\Services;
 
-use App\Modules\Program\Models\Program;
-use App\Modules\UserManagement\Models\Lecturer;
-use App\Modules\Auth\Models\User;
-use App\Modules\Student\Models\Student;
-use App\Modules\Evaluation\Models\Evaluation;
 use App\Enums\Department;
 use App\Enums\LecturerTitle;
 use App\Enums\EvaluationType;
 use App\Enums\NominationStatus;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
 
 class StudentEvaluationImportService
 {
@@ -91,7 +84,7 @@ class StudentEvaluationImportService
         // Examiner 1 must be at least Associate Professor
         if (!empty($row['examiner1_title'])) {
             if (!in_array($row['examiner1_title'], [LecturerTitle::PROFESSOR_MADYA, LecturerTitle::PROFESSOR])) {
-                $errors[] = "Examiner 1 must be at least Associate Professor (ProfessorMadya)";
+                $errors[] = "Examiner 1 must be at least Associate Professor (Professor Madya)";
             }
         }
 
@@ -105,7 +98,7 @@ class StudentEvaluationImportService
         // Chairperson must be at least Associate Professor
         if (!empty($row['chairperson_title'])) {
             if (!in_array($row['chairperson_title'], [LecturerTitle::PROFESSOR_MADYA, LecturerTitle::PROFESSOR])) {
-                $errors[] = "Chairperson must be at least Associate Professor (ProfessorMadya)";
+                $errors[] = "Chairperson must be at least Associate Professor (Professor Madya)";
             }
         }
 

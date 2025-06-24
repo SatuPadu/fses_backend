@@ -8,7 +8,7 @@ namespace App\Enums;
 class LecturerTitle
 {
     public const DR = 'Dr';
-    public const PROFESSOR_MADYA = 'ProfessorMadya';
+    public const PROFESSOR_MADYA = 'Professor Madya';
     public const PROFESSOR = 'Professor';
     
     /**
