@@ -29,6 +29,16 @@ class JWTMiddleware
                     'message' => 'User not found'
                 ], 404);
             }
+
+            // Check if user profile is active
+            if (!$user->is_active) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User account is deactivated',
+                    'error_type' => 'account_deactivated'
+                ], 403);
+            }
+
         } catch (TokenExpiredException $e) {
             // Token has expired
             return response()->json([
@@ -61,7 +71,7 @@ class JWTMiddleware
             ], 401);
         }
 
-        // If we've made it this far, the token is valid
+        // If we've made it this far, the token is valid and user is active
         return $next($request);
     }
 }

@@ -31,8 +31,7 @@ class Controller extends BaseController
     /**
      * Send a success response.
      *
-     * @param mixed  $result
-     * @param string $message
+     * @param string|array $message
      * @return JsonResponse
      */
     public function sendResponse($result, string $message): JsonResponse

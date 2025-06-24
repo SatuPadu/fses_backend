@@ -12,16 +12,11 @@ class Kernel extends ConsoleKernel
      */
 
     protected $commands = [
-        \App\Modules\Aggregation\Commands\FetchNewsCommand::class,
     ];
 
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
-        $schedule->command('news:fetch')
-            ->everyMinute()
-            ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/scheduler.log'));
     }
 
     /**
@@ -30,8 +25,6 @@ class Kernel extends ConsoleKernel
     protected function commands(): void
     {
         $this->load(__DIR__.'/Commands');
-        $this->load(base_path('app/Modules/Aggregation/Commands'));
-
         require base_path('routes/console.php');
     }
 }

@@ -32,9 +32,9 @@ class PasswordResetController extends Controller
     {
         try {
             $validatedData = ForgotPasswordRequest::validate($request);
-            $token = $this->passwordResetService->sendResetLink($validatedData['email']);
+            $this->passwordResetService->sendResetLink($validatedData['email']);
 
-            return $this->sendResponse($token, 'Password reset link sent.');
+            return $this->sendResponse([], 'Password reset link sent.');
         } catch (Exception $e) {
             return $this->sendError(
                 'Invalid email address.',
@@ -50,7 +50,7 @@ class PasswordResetController extends Controller
             $validatedData = ResetPasswordRequest::validate($request);
             $this->passwordResetService->resetPassword($validatedData);
 
-            return $this->sendResponse(null, 'Password reset successful.');
+            return $this->sendResponse([], 'Password reset successful.');
         } catch (HttpException $e) {
             return $this->sendError(
                 $e->getMessage(),

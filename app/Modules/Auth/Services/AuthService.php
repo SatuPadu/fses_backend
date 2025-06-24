@@ -5,18 +5,11 @@ namespace App\Modules\Auth\Services;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use App\Modules\Auth\Models\User;
-use App\Modules\Auth\Repositories\UserRepository;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 class AuthService
 {
-    protected $userRepository;
-    
-    public function __construct(UserRepository $userRepository)
-    {
-        $this->userRepository = $userRepository;
-    }
 
     /**
      * Authenticate user and generate JWT token
@@ -31,12 +24,33 @@ class AuthService
             ->orWhere('staff_number', $credentials['identity'])
             ->first();
 
-        
+        // Check if account is locked
+        if ($user && !$user->is_active) {
+            throw new \Exception('Account is locked due to multiple failed login attempts with wrong password. Please contact administrator.');
+        }
         
         // Verify password
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            if ($user) {
+                // Increment failed login attempts
+                $user->failed_login_attempts += 1;
+                
+                // Lock account if 3 failed attempts
+                if ($user->failed_login_attempts > 2) {
+                    $user->is_active = false;
+                }
+                
+                $user->save();
+            }
+            if ($user->failed_login_attempts > 2) {
+                throw new \Exception('Account is locked due to multiple failed login attempts with wrong password. Please contact administrator.');
+            }
             throw new \Exception('Invalid credentials provided.');
         }
+
+        // Reset failed login attempts on successful login
+        $user->failed_login_attempts = 0;
+        $user->save();
 
         // Generate token
         $token = JWTAuth::fromUser($user);
@@ -45,7 +59,7 @@ class AuthService
         $this->updateLastLogin($user);
 
         // Get user roles
-        $roles = $this->userRepository->getUserRoles($user);
+        $roles = $user->roles;
 
         return [
             'access_token' => $token,
@@ -77,7 +91,7 @@ class AuthService
     public function register(array $userData): array
     {
         // Create user via repository
-        $user = $this->userRepository->create([
+        $user = User::create([
             'name' => $userData['name'],
             'email' => $userData['email'],
             'staff_number' => $userData['staff_number'],
@@ -89,7 +103,7 @@ class AuthService
 
         return [
             'user' => $user,
-            'roles' => $this->userRepository->getUserRoles($user)
+            'roles' => $user->roles
         ];
     }
 
@@ -124,7 +138,7 @@ class AuthService
                 'token_type' => 'bearer',
                 'expires_in' => Auth::factory()->getTTL() * 60,
                 'user' => $user,
-                'roles' => $user ? $this->userRepository->getUserRoles($user) : []
+                'roles' => $user ? $user->roles : []
             ];
         } catch (JWTException $e) {
             return false;
@@ -143,5 +157,30 @@ class AuthService
         } catch (JWTException $e) {
             return null;
         }
+    }
+
+    /**
+     * Reactivate a locked user account
+     *
+     * @param int $userId
+     * @return array
+     * @throws \Exception
+     */
+    public function reactivateAccount(int $userId): array
+    {
+        $user = User::find($userId);
+        
+        if (!$user) {
+            throw new \Exception('User not found.');
+        }
+
+        $user->is_active = true;
+        $user->failed_login_attempts = 0;
+        $user->save();
+
+        return [
+            'user' => $user,
+            'message' => 'Account reactivated successfully.'
+        ];
     }
 }

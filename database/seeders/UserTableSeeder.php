@@ -23,7 +23,7 @@ class UserTableSeeder extends Seeder
         // Create one user for each role, rotating through departments
         $users = [
             [
-                'name' => 'John Smith',
+                'name' => 'Office Assistant',
                 'email' => 'officeassistant@utm.com',
                 'staff_number' => 'OA123456',
                 'department' => $departments[0] ?? 'SEAT',
@@ -32,7 +32,7 @@ class UserTableSeeder extends Seeder
                 'is_password_updated' => false,
             ],
             [
-                'name' => 'Sarah Johnson',
+                'name' => 'Supervisor',
                 'email' => 'supervisor@utm.com',
                 'staff_number' => 'SV654321',
                 'department' => $departments[1] ?? 'II',
@@ -41,7 +41,7 @@ class UserTableSeeder extends Seeder
                 'is_password_updated' => false,
             ],
             [
-                'name' => 'Michael Brown',
+                'name' => 'Program Coordinator',
                 'email' => 'coordinator@utm.com',
                 'staff_number' => 'PC678901',
                 'department' => $departments[2] ?? 'BIHG',
@@ -50,7 +50,7 @@ class UserTableSeeder extends Seeder
                 'is_password_updated' => false,
             ],
             [
-                'name' => 'Dr. Emily Davis',
+                'name' => 'PGAM Administrator',
                 'email' => 'pgam@utm.com',
                 'staff_number' => 'PG987654',
                 'department' => $departments[3] ?? 'CAI',
