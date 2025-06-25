@@ -40,7 +40,8 @@ class StoreStudentRequest extends FormRequest
             'country' => 'nullable|string|max:100',
             'main_supervisor_id' => 'required|integer|exists:lecturers,id',
             'evaluation_type' => ['required', Rule::in(['FirstEvaluation', 'ReEvaluation'])],
-            'co_supervisor_id' => 'nullable|integer|exists:lecturers,id'
+            'co_supervisors' => 'nullable|array',
+            'co_supervisors.*' => 'integer|exists:lecturers,id',
         ];
     }
 
@@ -59,5 +60,24 @@ class StoreStudentRequest extends FormRequest
             'message' => 'Validation errors',
             'data'    => $validator->errors()
         ], 422));
+    }
+
+    /**
+     * Get custom messages for validator errors.
+     *
+     * @return array
+     */
+    public function messages(): array
+    {
+        return [
+            'matric_number.unique' => 'The matric number has already been taken.',
+            'email.unique' => 'The email has already been taken.',
+            'program_id.exists' => 'The selected program is invalid.',
+            'main_supervisor_id.exists' => 'The selected supervisor is invalid.',
+            'co_supervisors.array' => 'The co-supervisors must be an array.',
+            'co_supervisors.*.exists' => 'The selected co-supervisor is invalid.',
+            'department.in' => 'The department must be one of: SEAT, II, BIHG, CAI, Other.',
+            'evaluation_type.in' => 'The evaluation type must be either FirstEvaluation or ReEvaluation.',
+        ];
     }
 }

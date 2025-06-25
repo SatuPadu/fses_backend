@@ -4,6 +4,7 @@ namespace App\Modules\Student\Services;
 
 use App\Modules\Student\Models\Student;
 use App\Modules\UserManagement\Models\Lecturer;
+use App\Modules\Evaluation\Models\CoSupervisor;
 
 class StudentService
 {
@@ -21,7 +22,7 @@ class StudentService
      */
     public function getAllStudents(int $numPerPage, array $filters)
     {
-        $query = Student::with(['program', 'mainSupervisor']);
+        $query = Student::with(['program', 'mainSupervisor', 'coSupervisors.lecturer']);
 
         // Apply filter by program if provided
         if (isset($filters['program'])) {
@@ -118,7 +119,28 @@ class StudentService
 
         Lecturer::findOrFail($data['main_supervisor_id']);
 
-        return Student::create($data);
+        // Extract co-supervisors data before creating student
+        $coSupervisorIds = $data['co_supervisors'] ?? [];
+        unset($data['co_supervisors']);
+
+        // Create the student
+        $student = Student::create($data);
+
+        // Create co-supervisor relationships
+        if (!empty($coSupervisorIds)) {
+            foreach ($coSupervisorIds as $lecturerId) {
+                $lecturer = Lecturer::findOrFail($lecturerId);
+                
+                CoSupervisor::create([
+                    'student_id' => $student->id,
+                    'lecturer_id' => $lecturer->is_from_fai ? $lecturer->id : null,
+                    'external_name' => $lecturer->is_from_fai ? null : $lecturer->name,
+                    'external_institution' => $lecturer->is_from_fai ? null : $lecturer->external_institution,
+                ]);
+            }
+        }
+
+        return $student->load('coSupervisors.lecturer');
     }
 
     /**
@@ -131,7 +153,7 @@ class StudentService
      */
     public function getStudentById(int $id): Student
     {
-        $student = Student::with(['program', 'mainSupervisor', 'evaluations'])->findOrFail($id);
+        $student = Student::with(['program', 'mainSupervisor', 'evaluations', 'coSupervisors.lecturer'])->findOrFail($id);
         
         // Apply role-based access control
         $user = auth()->user();
@@ -203,8 +225,33 @@ class StudentService
             Lecturer::findOrFail($data['main_supervisor_id']);
         }
 
+        // Extract co-supervisors data before updating student
+        $coSupervisorIds = $data['co_supervisors'] ?? null;
+        unset($data['co_supervisors']);
+
         $student->update($data);
-        return $student->fresh();
+
+        // Update co-supervisor relationships if provided
+        if ($coSupervisorIds !== null) {
+            // Delete existing co-supervisor relationships
+            $student->coSupervisors()->delete();
+
+            // Create new co-supervisor relationships
+            if (!empty($coSupervisorIds)) {
+                foreach ($coSupervisorIds as $lecturerId) {
+                    $lecturer = Lecturer::findOrFail($lecturerId);
+                    
+                    CoSupervisor::create([
+                        'student_id' => $student->id,
+                        'lecturer_id' => $lecturer->is_from_fai ? $lecturer->id : null,
+                        'external_name' => $lecturer->is_from_fai ? null : $lecturer->name,
+                        'external_institution' => $lecturer->is_from_fai ? null : $lecturer->external_institution,
+                    ]);
+                }
+            }
+        }
+
+        return $student->fresh(['coSupervisors.lecturer']);
     }
 
     /**

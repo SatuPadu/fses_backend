@@ -69,8 +69,8 @@ class StudentController extends Controller
             return $this->sendCreatedResponse($student, 'Student added successfully!');
         } catch (ModelNotFoundException $e) {
             return $this->sendError(
-                'Supervisor not found',
-                ['error' => 'Supervisor not found'],
+                'Supervisor or co-supervisor not found',
+                ['error' => 'One or more supervisors not found'],
                 Response::HTTP_NOT_FOUND
             );
         } catch (QueryException $e) {
@@ -130,8 +130,8 @@ class StudentController extends Controller
             return $this->sendResponse($student, 'Student info updated successfully!');
         } catch (ModelNotFoundException $e) {
             return $this->sendError(
-                'Student not found',
-                ['error' => 'Student not found'],
+                'Student or supervisor not found',
+                ['error' => 'Student or one or more supervisors not found'],
                 Response::HTTP_NOT_FOUND
             );
         } catch (QueryException $e) {
