@@ -43,9 +43,6 @@ class UpdateStudentRequest extends FormRequest
             'main_supervisor_id' => 'sometimes|required|integer|exists:lecturers,id',
             'evaluation_type' => ['sometimes', 'required', Rule::in(['FirstEvaluation', 'ReEvaluation'])],
             'co_supervisor_id' => 'nullable|integer|exists:lecturers,id',
-            'research_title' => 'nullable|string',
-            'is_postponed' => 'boolean',
-            'postponement_reason' => 'nullable|string',
         ];
     }
 
