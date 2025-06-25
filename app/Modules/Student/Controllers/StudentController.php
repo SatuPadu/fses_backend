@@ -5,11 +5,13 @@ namespace App\Modules\Student\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Student\Requests\StoreStudentRequest;
 use App\Modules\Student\Requests\UpdateStudentRequest;
+use App\Modules\Student\Requests\StudentGetRequest;
 use App\Modules\Student\Services\StudentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Response;
 use Throwable;
 
 /**
@@ -37,16 +39,20 @@ class StudentController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
+            $validated_request = StudentGetRequest::validate($request);
             $students = $this->studentService->getAllStudents(
-                $request->get('per_page', 10),
-                $request->all()
+                $validated_request['per_page'] ?? 10,
+                $validated_request
             );
-            return response()->json($students);
+            return $this->sendResponse($students, 'Student list retrieved successfully!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->sendValidationError($e->errors());
         } catch (Throwable $e) {
-            return response()->json([
-                'error' => 'Failed to retrieve students',
-                'message' => $e->getMessage()
-            ], 500);
+            return $this->sendError(
+                'Failed to retrieve students',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -60,21 +66,25 @@ class StudentController extends Controller
     {
         try {
             $student = $this->studentService->createStudent($request->validated());
-            return response()->json($student, 201);
+            return $this->sendCreatedResponse($student, 'Student added successfully!');
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'error' => 'Supervisor not found'
-            ], 404);
+            return $this->sendError(
+                'Supervisor not found',
+                ['error' => 'Supervisor not found'],
+                Response::HTTP_NOT_FOUND
+            );
         } catch (QueryException $e) {
-            return response()->json([
-                'error' => 'Database error',
-                'message' => $e->getMessage()
-            ], 400);
+            return $this->sendError(
+                'Database error',
+                ['error' => $e->getMessage()],
+                Response::HTTP_BAD_REQUEST
+            );
         } catch (Throwable $e) {
-            return response()->json([
-                'error' => 'Unexpected error',
-                'message' => $e->getMessage()
-            ], 500);
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -89,16 +99,19 @@ class StudentController extends Controller
     {
         try {
             $student = $this->studentService->getStudentById($id);
-            return response()->json($student);
+            return $this->sendResponse($student, 'Student details retrieved successfully!');
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'error' => 'Student not found'
-            ], 404);
+            return $this->sendError(
+                'Student not found',
+                ['error' => 'Student not found'],
+                Response::HTTP_NOT_FOUND
+            );
         } catch (Throwable $e) {
-            return response()->json([
-                'error' => 'Failed to retrieve student',
-                'message' => $e->getMessage()
-            ], 500);
+            return $this->sendError(
+                'Failed to retrieve student',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -113,23 +126,26 @@ class StudentController extends Controller
     {
         try {
             $validated = $request->validated();
-
             $student = $this->studentService->updateStudent($id, $validated);
-            return response()->json($student);
+            return $this->sendResponse($student, 'Student info updated successfully!');
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'error' => 'Student not found'
-            ], 404);
+            return $this->sendError(
+                'Student not found',
+                ['error' => 'Student not found'],
+                Response::HTTP_NOT_FOUND
+            );
         } catch (QueryException $e) {
-            return response()->json([
-                'error' => 'Database error',
-                'message' => $e->getMessage()
-            ], 400);
+            return $this->sendError(
+                'Database error',
+                ['error' => $e->getMessage()],
+                Response::HTTP_BAD_REQUEST
+            );
         } catch (Throwable $e) {
-            return response()->json([
-                'error' => 'Unexpected error',
-                'message' => $e->getMessage()
-            ], 500);
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
@@ -143,18 +159,19 @@ class StudentController extends Controller
     {
         try {
             $this->studentService->deleteStudent($id);
-            return response()->json([
-                'message' => 'Student deleted successfully'
-            ]);
+            return $this->sendResponse(null, 'Student info deleted successfully!');
         } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'error' => 'Student not found'
-            ], 404);
+            return $this->sendError(
+                'Student not found',
+                ['error' => 'Student not found'],
+                Response::HTTP_NOT_FOUND
+            );
         } catch (Throwable $e) {
-            return response()->json([
-                'error' => 'Failed to delete student',
-                'message' => $e->getMessage()
-            ], 500);
+            return $this->sendError(
+                'Failed to delete student',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 }
