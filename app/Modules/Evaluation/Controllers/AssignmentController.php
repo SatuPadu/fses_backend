@@ -22,99 +22,61 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Receives collection of objects containing chairperson assignments.
-     * 
-     * @param \Illuminate\Http\Request $request
-     * @throws \Exception
-     * @return JsonResponse
-     */
-    public function assign(Request $request): JsonResponse
-    {
-        try {
-
-            $validated_request = UpdateAssignmentRequest::validate($request);
-            $evaluation = $this->assignmentService->assign($validated_request);
-
-            if ($evaluation['status'] == 'success') {
-                return $this->sendResponse($evaluation, 'Assignment updated successfully.');
-            }
-            else {
-                throw new \Exception;
-            }
-            
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return $this->sendValidationError($e->errors());
-        } catch (\Exception $e) {
-            return $this->sendError(
-                'An unexpected error occurred. Please try again later.',
-                ['error' => $e->getMessage()],
-                Response::HTTP_INTERNAL_SERVER_ERROR
-            );
-        }
-    }
-
-    /**
-     * Receive evaluation ID to lock nominations.
-     * 
-     * @param mixed $evaluationId
-     * @return JsonResponse
-     */
-    public function lock($evaluationId): JsonResponse
-    {
-        try {
-            $evaluation = $this->assignmentService->lock($evaluationId);
-
-            return $this->sendResponse($evaluation, 'Evaluation nomination locked successfully.');
-        } catch (\Exception $e) {
-            return $this->sendError(
-                'An unexpected error occurred. Please try again later.',
-                ['error' => $e->getMessage()],
-                Response::HTTP_INTERNAL_SERVER_ERROR
-            );
-        }
-    }
-
-    /**
-     * Display a listing of assignments.
-     * 
-     * @param \Illuminate\Http\Request $request
-     * @return JsonResponse
-     */
-    public function index(Request $request): JsonResponse
-    {
-        try {
-            $assignments = $this->assignmentService->getAssignments(
-                $request->get('per_page', 10),
-                $request->all()
-            );
-            return $this->sendResponse($assignments, 'Assignments retrieved successfully!');
-        } catch (\Exception $e) {
-            return $this->sendError(
-                'An unexpected error occurred. Please try again later.',
-                ['error' => $e->getMessage()],
-                Response::HTTP_INTERNAL_SERVER_ERROR
-            );
-        }
-    }
-
-    /**
      * Update an existing chairperson assignment.
      * 
      * @param \Illuminate\Http\Request $request
-     * @param int $id
      * @return JsonResponse
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(Request $request): JsonResponse
     {
         try {
-            
-            $validated_request = UpdateAssignmentRequest::validate($request, $id);
-            
-            $evaluation = $this->assignmentService->assign([$validated_request]);
-
+            $validated_request = UpdateAssignmentRequest::validate($request);
+            $evaluation = $this->assignmentService->assign($validated_request['assignments']);
             return $this->sendResponse($evaluation, 'Assignment updated successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->sendValidationError($e->errors());
+        } catch (\Exception $e) {
+            return $this->sendError(
+                'An unexpected error occurred. Please try again later.',
+                ['error' => $e->getMessage()],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    /**
+     * Get eligible chairperson suggestions for an evaluation.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return JsonResponse
+     */
+    public function getChairpersonSuggestions(Request $request): JsonResponse
+    {
+        $evaluationId = $request->query('evaluation_id');
+        if (!$evaluationId) {
+            return response()->json(['error' => 'evaluation_id is required'], 422);
+        }
+
+        try {
+            $eligibleChairpersons = $this->assignmentService->getEligibleChairpersons($evaluationId);
+            return response()->json($eligibleChairpersons);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Get all eligible chairpersons for future evaluations (no evaluation context).
+     *
+     * @return JsonResponse
+     */
+    public function chairpersonSuggestions(): JsonResponse
+    {
+        try {
+            $eligibleChairpersons = $this->assignmentService->chairpersonSuggestions();
+            return $this->sendResponse($eligibleChairpersons, 'Eligible chairpersons retrieved successfully!');
         } catch (\Exception $e) {
             return $this->sendError(
                 'An unexpected error occurred. Please try again later.',

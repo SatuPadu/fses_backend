@@ -47,7 +47,7 @@ class RoleTableSeeder extends Seeder
                     'students' => ['view', 'create', 'edit', 'delete', 'import'],
                     'users' => ['view', 'create', 'edit', 'delete'],
                     'lecturers' => ['view', 'create', 'edit', 'delete'],
-                    'programs' => ['view'],
+                    'programs' => ['view', 'create', 'edit', 'delete'],
                 ]
             ],
             [

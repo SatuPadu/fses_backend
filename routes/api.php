@@ -127,10 +127,8 @@ Route::prefix('evaluations')->middleware(['jwt.verify', 'password.updated', 'per
 
     // Assignment routes (Program Coordinator, PGAM)
     Route::prefix('assignments')->group(function () {
-        Route::get('/', [AssignmentController::class, 'index']);
-        Route::post('/', [AssignmentController::class, 'assign'])->middleware('role:ProgramCoordinator');
-        Route::put('/{id}', [AssignmentController::class, 'update'])->middleware('role:ProgramCoordinator');
-        Route::post('/{id}/lock', [AssignmentController::class, 'lock'])->middleware('role:ProgramCoordinator');
+        Route::get('/chairperson-suggestions', [AssignmentController::class, 'chairpersonSuggestions'])->middleware('role:ProgramCoordinator');
+        Route::post('/', [AssignmentController::class, 'update'])->middleware('role:ProgramCoordinator');
     });
 });
 
