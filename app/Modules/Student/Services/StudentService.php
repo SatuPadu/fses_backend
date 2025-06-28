@@ -196,6 +196,16 @@ class StudentService
             return $student;
         });
 
+        // Apply my_role filter if provided
+        if (isset($filters['my_role']) && !empty($filters['my_role'])) {
+            $roleToFilter = $filters['my_role'];
+            $filtered = $paginator->getCollection()->filter(function ($student) use ($roleToFilter) {
+                return in_array($roleToFilter, $student->user_roles ?? []);
+            });
+            // Rebuild paginator with filtered collection
+            $paginator->setCollection($filtered->values());
+        }
+
         return $paginator;
     }
 
