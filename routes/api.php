@@ -58,6 +58,11 @@ Route::prefix('password')->group(function () {
 Route::prefix('lecturers')->middleware(['jwt.verify', 'password.updated', 'permission:lecturers,view'])->group(function () {
     Route::get('/', [LecturerController::class, 'index']);
     Route::post('/', [LecturerController::class, 'store'])->middleware('permission:lecturers,create');
+    
+    // Supervisor Suggestions Routes - must come before {id} route
+    Route::get('/supervisor-suggestions', [LecturerController::class, 'getSupervisorSuggestions']);
+    Route::get('/co-supervisor-suggestions', [LecturerController::class, 'getCoSupervisorSuggestions']);
+    
     Route::get('/{id}', [LecturerController::class, 'lecturerDetail']);
     Route::put('/{id}', [LecturerController::class, 'update'])->middleware('permission:lecturers,edit');
     Route::delete('/{id}', [LecturerController::class, 'destroy'])->middleware('permission:lecturers,delete');

@@ -3,6 +3,7 @@
 namespace App\Modules\Student\Requests;
 
 use App\Enums\Department;
+use App\Enums\UserRole;
 use App\Enums\EvaluationType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -33,7 +34,9 @@ class StudentGetRequest
             'supervisor_id' => ['nullable', 'integer', 'exists:lecturers,id'],
             'coordinator_id' => ['nullable', 'integer', 'exists:users,id'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-            'with_evaluation' => ['nullable', 'string', 'in:true,false,0,1']
+            'with_evaluation' => ['nullable', 'string', 'in:true,false,0,1'],
+            'my_role' => ['nullable', 'string', Rule::in(UserRole::all())],
+            'email' => ['nullable', 'email'],
         ]);
 
         if($validator->fails()) {

@@ -627,4 +627,14 @@ class LecturerService
             'by_program' => $workloadByProgram,
         ];
     }
+
+    public function getSupervisorsByDepartment($department)
+    {
+        return Lecturer::where('department', $department)->get();
+    }
+
+    public function getCoSupervisorsExcluding($supervisorId)
+    {
+        return Lecturer::where('id', '!=', $supervisorId)->get();
+    }
 }

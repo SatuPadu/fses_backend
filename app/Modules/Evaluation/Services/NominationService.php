@@ -87,6 +87,12 @@ class NominationService
             $status = NominationStatus::NOMINATED;
         }
 
+        // Update student's research title if provided
+        if (isset($request['research_title'])) {
+            $student = Student::find($request['student_id']);
+            $student->update(['research_title' => $request['research_title']]);
+        }
+
         $evaluation = Evaluation::create([
             'student_id' => $request['student_id'],
             'semester' => $request['semester'],
@@ -116,6 +122,12 @@ class NominationService
 
         if ($evaluation->nomination_status == NominationStatus::LOCKED) {
             throw new Exception('Examiner Nominations have been locked! No further modifications are allowed!');
+        }
+
+        // Update student's research title if provided
+        if (isset($request['research_title'])) {
+            $student = Student::find($evaluation->student_id);
+            $student->update(['research_title' => $request['research_title']]);
         }
 
         $evaluation->semester = $request['semester'] ?? $evaluation->semester;

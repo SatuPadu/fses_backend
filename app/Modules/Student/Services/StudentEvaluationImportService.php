@@ -6,6 +6,7 @@ use App\Enums\Department;
 use App\Enums\LecturerTitle;
 use App\Enums\EvaluationType;
 use App\Enums\NominationStatus;
+use App\Enums\ProgramName;
 
 class StudentEvaluationImportService
 {
@@ -156,37 +157,40 @@ class StudentEvaluationImportService
             }
         }
 
-        // Program validation
+        // Program validation with mapping
         if (!empty($row['program_name'])) {
-            $programMapping = $this->getProgramMapping();
-            if (!array_key_exists($row['program_name'], $programMapping)) {
-                $errors[] = "Invalid program name: {$row['program_name']}";
+            $trimmedProgramName = trim($row['program_name']);
+            
+            // Map full program names to enum values
+            $programNameMapping = [
+                'Doctor of Philosophy' => ProgramName::PHD,
+                'Master of Philosophy' => ProgramName::MPHIL,
+                'Doctor of Software Engineering' => ProgramName::DSE
+            ];
+            
+            $enumProgramName = $programNameMapping[$trimmedProgramName] ?? $trimmedProgramName;
+            
+            if (!ProgramName::isValid($enumProgramName)) {
+                $errors[] = "Invalid program name: {$row['program_name']}. Valid options are: Doctor of Philosophy, Master of Philosophy, Doctor of Software Engineering, or the short forms: " . implode(', ', ProgramName::all());
             } else {
-                // Validate semester for program type
+                // Validate semester for program type using the mapped enum value
                 $semester = (int)($row['current_semester'] ?? 0);
                 
                 if ($semester > 0) {
-                    switch ($row['program_name']) {
-                        case 'Master of Philosophy':
+                    switch ($enumProgramName) {
+                        case ProgramName::MPHIL:
                             if ($semester != 2) {
                                 $errors[] = "Master of Philosophy students must be in semester 2 for evaluation, found semester {$semester}";
                             }
                             break;
-                        case 'Doctor of Philosophy':
-                            if ($semester != 3) {
-                                $errors[] = "Doctor of Philosophy students must be in semester 3 for evaluation, found semester {$semester}";
-                            }
-                            break;
-                        case 'Doctor of Software Engineering':
-                        case 'Master of Software Engineering':
-                            if ($semester < 6 || $semester > 8) {
-                                $errors[] = "{$row['program_name']} students must be in semester 6-8 for evaluation, found semester {$semester}";
-                            }
-                            break;
-                        case 'Master of Computer Science':
-                        case 'Master of Information Technology':
+                        case ProgramName::PHD:
                             if ($semester != 2) {
-                                $errors[] = "{$row['program_name']} students must be in semester 2 for evaluation, found semester {$semester}";
+                                $errors[] = "Doctor of Philosophy students must be in semester 2 for evaluation, found semester {$semester}";
+                            }
+                            break;
+                        case ProgramName::DSE:
+                            if ($semester < 6 || $semester > 8) {
+                                $errors[] = "Doctor of Software Engineering students must be in semester 6-8 for evaluation, found semester {$semester}";
                             }
                             break;
                     }
@@ -199,24 +203,15 @@ class StudentEvaluationImportService
 
     /**
      * Get program mapping for different program types
+     * Updated to use the new enum values and mapping
      */
     public function getProgramMapping(): array
     {
         return [
-            'Master of Computer Science' => [
-                'code' => 'MCS',
-                'total_semesters' => 4,
-                'evaluation_semester' => 2
-            ],
-            'Master of Information Technology' => [
-                'code' => 'MIT',
-                'total_semesters' => 4,
-                'evaluation_semester' => 2
-            ],
             'Doctor of Philosophy' => [
                 'code' => 'PhD',
-                'total_semesters' => 8,
-                'evaluation_semester' => 3
+                'total_semesters' => 6,
+                'evaluation_semester' => 2
             ],
             'Master of Philosophy' => [
                 'code' => 'MPhil',
@@ -226,12 +221,7 @@ class StudentEvaluationImportService
             'Doctor of Software Engineering' => [
                 'code' => 'DSE',
                 'total_semesters' => 8,
-                'evaluation_semester' => [6, 7, 8] // Can be 6-8 semesters
-            ],
-            'Master of Software Engineering' => [
-                'code' => 'MSE',
-                'total_semesters' => 8,
-                'evaluation_semester' => [6, 7, 8] // Can be 6-8 semesters
+                'evaluation_semester' => 6
             ]
         ];
     }

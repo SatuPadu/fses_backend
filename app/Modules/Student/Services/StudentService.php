@@ -88,7 +88,7 @@ class StudentService
     {
         $query = Student::with(['program', 'mainSupervisor', 'evaluations', 'coSupervisors.lecturer']);
 
-        // Apply filter by program if provided
+        // Apply basic filters first
         if (isset($filters['program'])) {
             $query->where('program_id', $filters['program']);
         }
@@ -121,71 +121,226 @@ class StudentService
             $query->with(['evaluations']);
         }
 
+        if (isset($filters['email'])) {
+            $query->where('email', $filters['email']);
+        }
+
         // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
-        // Check if user has PGAM or Office Assistant role (can see all data)
-        if (in_array('PGAM', $userRoles) || in_array('OfficeAssistant', $userRoles)) {
-            // PGAM and Office Assistant can see all data - no additional filtering needed
-        } else {
-            // For users with other roles, apply role-based filtering with OR conditions
-            $query->where(function ($q) use ($user, $userRoles) {
-                $hasAccess = false;
-
-                // Check if user is a Program Coordinator (can see their department)
-                if (in_array('ProgramCoordinator', $userRoles)) {
-                    $q->orWhere('department', $user->department);
-                    $hasAccess = true;
-                }
-
-                // Check if user is a Research Supervisor (can see students they supervise)
-                if (in_array('ResearchSupervisor', $userRoles)) {
-                    $q->orWhereHas('mainSupervisor', function ($sq) use ($user) {
-                        $sq->where('staff_number', $user->staff_number);
-                    });
-                    $hasAccess = true;
-                }
-
-                // Check if user is a Co-Supervisor (can see students they co-supervise)
-                if (in_array('CoSupervisor', $userRoles)) {
-                    $q->orWhereHas('coSupervisors', function ($csq) use ($user) {
-                        $csq->where('lecturer_id', $user->lecturer->id);
-                    });
-                    $hasAccess = true;
-                }
-
-                // Check if user is a Chairperson (can see students they're chairing)
-                if (in_array('Chairperson', $userRoles)) {
-                    $q->orWhereHas('evaluations', function ($eq) use ($user) {
-                        $eq->whereHas('chairperson', function ($cq) use ($user) {
-                            $cq->where('staff_number', $user->staff_number);
-                        });
-                    });
-                    $hasAccess = true;
-                }
-
-                // Check if user is an Examiner (can see students they're examining)
-                $q->orWhereHas('evaluations', function ($eq) use ($user) {
-                    $eq->where(function ($exq) use ($user) {
-                        $exq->whereHas('examiner1', function ($e1q) use ($user) {
-                            $e1q->where('staff_number', $user->staff_number);
-                        })
-                        ->orWhereHas('examiner2', function ($e2q) use ($user) {
-                            $e2q->where('staff_number', $user->staff_number);
-                        })
-                        ->orWhereHas('examiner3', function ($e3q) use ($user) {
-                            $e3q->where('staff_number', $user->staff_number);
-                        });
-                    });
+        // Check if my_role filter is provided
+        if (isset($filters['my_role']) && !empty($filters['my_role'])) {
+            $roleToFilter = $filters['my_role'];
+            
+            // Check if user has PGAM or Office Assistant role (can see all data)
+            if (in_array('PGAM', $userRoles) || in_array('OfficeAssistant', $userRoles)) {
+                
+                $query->where(function ($q) use ($user, $roleToFilter) {
+                    switch ($roleToFilter) {
+                        case 'ProgramCoordinator':
+                            $q->where('department', $user->department);
+                            break;
+                            
+                        case 'ResearchSupervisor':
+                            $q->whereHas('mainSupervisor', function ($sq) use ($user) {
+                                $sq->where('staff_number', $user->staff_number);
+                            });
+                            break;
+                            
+                        case 'CoSupervisor':
+                            // Make sure user has lecturer relationship
+                            if ($user->lecturer) {
+                                $q->whereHas('coSupervisors', function ($csq) use ($user) {
+                                    $csq->where('lecturer_id', $user->lecturer->id);
+                                });
+                            } else {
+                                // If user doesn't have lecturer relationship, return no results
+                                $q->whereRaw('1 = 0');
+                            }
+                            break;
+                            
+                        case 'Chairperson':
+                            $q->whereHas('evaluations', function ($eq) use ($user) {
+                                $eq->whereHas('chairperson', function ($cq) use ($user) {
+                                    $cq->where('staff_number', $user->staff_number);
+                                });
+                            });
+                            break;
+                            
+                        case 'Examiner 1':
+                            $q->whereHas('evaluations', function ($eq) use ($user) {
+                                $eq->whereHas('examiner1', function ($e1q) use ($user) {
+                                    $e1q->where('staff_number', $user->staff_number);
+                                });
+                            });
+                            break;
+                            
+                        case 'Examiner 2':
+                            $q->whereHas('evaluations', function ($eq) use ($user) {
+                                $eq->whereHas('examiner2', function ($e2q) use ($user) {
+                                    $e2q->where('staff_number', $user->staff_number);
+                                });
+                            });
+                            break;
+                            
+                        case 'Examiner 3':
+                            $q->whereHas('evaluations', function ($eq) use ($user) {
+                                $eq->whereHas('examiner3', function ($e3q) use ($user) {
+                                    $e3q->where('staff_number', $user->staff_number);
+                                });
+                            });
+                            break;
+                            
+                        default:
+                            // Unknown role, return no results
+                            $q->whereRaw('1 = 0');
+                            break;
+                    }
                 });
-                $hasAccess = true;
-
-                // If user has no relevant roles, return no results
-                if (!$hasAccess) {
-                    $q->whereRaw('1 = 0'); // This will return no results
+            } else {
+                
+                $hasSpecificRole = false;
+                switch ($roleToFilter) {
+                    case 'ProgramCoordinator':
+                        $hasSpecificRole = in_array('ProgramCoordinator', $userRoles);
+                        if ($hasSpecificRole) {
+                            $query->where('department', $user->department);
+                        }
+                        break;
+                        
+                    case 'ResearchSupervisor':
+                        $hasSpecificRole = in_array('ResearchSupervisor', $userRoles);
+                        if ($hasSpecificRole) {
+                            $query->whereHas('mainSupervisor', function ($sq) use ($user) {
+                                $sq->where('staff_number', $user->staff_number);
+                            });
+                        }
+                        break;
+                        
+                    case 'CoSupervisor':
+                        $hasSpecificRole = in_array('CoSupervisor', $userRoles);
+                        if ($hasSpecificRole) {
+                            if ($user->lecturer) {
+                                $query->whereHas('coSupervisors', function ($csq) use ($user) {
+                                    $csq->where('lecturer_id', $user->lecturer->id);
+                                });
+                            } else {
+                                // If user doesn't have lecturer relationship, return no results
+                                $query->whereRaw('1 = 0');
+                            }
+                        }
+                        break;
+                        
+                    case 'Chairperson':
+                        $hasSpecificRole = in_array('Chairperson', $userRoles);
+                        if ($hasSpecificRole) {
+                            $query->whereHas('evaluations', function ($eq) use ($user) {
+                                $eq->whereHas('chairperson', function ($cq) use ($user) {
+                                    $cq->where('staff_number', $user->staff_number);
+                                });
+                            });
+                        }
+                        break;
+                        
+                    case 'Examiner 1':
+                    case 'Examiner 2':
+                    case 'Examiner 3':
+                        // Check if user has any examiner role - be more flexible here
+                        $hasSpecificRole = in_array('Examiner', $userRoles) || 
+                                         in_array('Examiner1', $userRoles) || 
+                                         in_array('Examiner2', $userRoles) || 
+                                         in_array('Examiner3', $userRoles);
+                        if ($hasSpecificRole) {
+                            $query->whereHas('evaluations', function ($eq) use ($user, $roleToFilter) {
+                                switch ($roleToFilter) {
+                                    case 'Examiner 1':
+                                        $eq->whereHas('examiner1', function ($e1q) use ($user) {
+                                            $e1q->where('staff_number', $user->staff_number);
+                                        });
+                                        break;
+                                    case 'Examiner 2':
+                                        $eq->whereHas('examiner2', function ($e2q) use ($user) {
+                                            $e2q->where('staff_number', $user->staff_number);
+                                        });
+                                        break;
+                                    case 'Examiner 3':
+                                        $eq->whereHas('examiner3', function ($e3q) use ($user) {
+                                            $e3q->where('staff_number', $user->staff_number);
+                                        });
+                                        break;
+                                }
+                            });
+                        }
+                        break;
                 }
-            });
+                
+                // If user doesn't have the specific role they're filtering by, return no results
+                if (!$hasSpecificRole) {
+                    $query->whereRaw('1 = 0');
+                }
+            }
+        } else {
+            // No my_role filter provided - apply general role-based access control
+            // [Your existing general role-based logic here]
+            if (in_array('PGAM', $userRoles) || in_array('OfficeAssistant', $userRoles)) {
+                // PGAM and Office Assistant can see all data - no additional filtering needed
+            } else {
+                // Apply your existing general role-based filtering logic
+                $query->where(function ($q) use ($user, $userRoles) {
+                    $hasAccess = false;
+
+                    if (in_array('ProgramCoordinator', $userRoles)) {
+                        $q->orWhere('department', $user->department);
+                        $hasAccess = true;
+                    }
+
+                    if (in_array('ResearchSupervisor', $userRoles)) {
+                        $q->orWhereHas('mainSupervisor', function ($sq) use ($user) {
+                            $sq->where('staff_number', $user->staff_number);
+                        });
+                        $hasAccess = true;
+                    }
+
+                    if (in_array('CoSupervisor', $userRoles)) {
+                        if ($user->lecturer) {
+                            $q->orWhereHas('coSupervisors', function ($csq) use ($user) {
+                                $csq->where('lecturer_id', $user->lecturer->id);
+                            });
+                        }
+                        $hasAccess = true;
+                    }
+
+                    if (in_array('Chairperson', $userRoles)) {
+                        $q->orWhereHas('evaluations', function ($eq) use ($user) {
+                            $eq->whereHas('chairperson', function ($cq) use ($user) {
+                                $cq->where('staff_number', $user->staff_number);
+                            });
+                        });
+                        $hasAccess = true;
+                    }
+
+                    // Check if user is an Examiner
+                    $q->orWhereHas('evaluations', function ($eq) use ($user) {
+                        $eq->where(function ($exq) use ($user) {
+                            $exq->whereHas('examiner1', function ($e1q) use ($user) {
+                                $e1q->where('staff_number', $user->staff_number);
+                            })
+                            ->orWhereHas('examiner2', function ($e2q) use ($user) {
+                                $e2q->where('staff_number', $user->staff_number);
+                            })
+                            ->orWhereHas('examiner3', function ($e3q) use ($user) {
+                                $e3q->where('staff_number', $user->staff_number);
+                            });
+                        });
+                    });
+                    $hasAccess = true;
+
+                    if (!$hasAccess) {
+                        $q->whereRaw('1 = 0');
+                    }
+                });
+            }
         }
 
         $paginator = $query->orderBy('created_at', 'desc')->paginate($numPerPage);
@@ -196,18 +351,9 @@ class StudentService
             return $student;
         });
 
-        // Apply my_role filter if provided
-        if (isset($filters['my_role']) && !empty($filters['my_role'])) {
-            $roleToFilter = $filters['my_role'];
-            $filtered = $paginator->getCollection()->filter(function ($student) use ($roleToFilter) {
-                return in_array($roleToFilter, $student->user_roles ?? []);
-            });
-            // Rebuild paginator with filtered collection
-            $paginator->setCollection($filtered->values());
-        }
-
         return $paginator;
     }
+
 
     /**
      * Create a new student record with role-based access control.

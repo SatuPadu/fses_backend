@@ -8,7 +8,9 @@ use App\Modules\Auth\Models\User;
 use App\Modules\Student\Models\Student;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use App\Modules\Student\Services\StudentEvaluationImportService;
+use App\Enums\Department;
+use App\Enums\ProgramName;
+use App\Enums\UserRole;
 
 class ImportDataProcessor
 {
@@ -101,16 +103,44 @@ class ImportDataProcessor
 
     protected function createOrUpdateProgram($row, &$result)
     {
-        $programData = [
-            'program_name' => $row['program_name'],
-            'program_code' => $this->generateProgramCode($row['program_name']),
-            'department' => $row['student_department'],
-            'total_semesters' => $this->getTotalSemesters($row['program_name']),
-            'evaluation_semester' => $this->getEvaluationSemester($row['program_name'])
-        ];
-
-        $existingProgram = Program::where('program_name', $row['program_name'])->first();
+        $programName = trim($row['program_name']);
         
+        // Map full program names to enum values for validation
+        $programNameMapping = [
+            'Doctor of Philosophy' => ProgramName::PHD,
+            'Master of Philosophy' => ProgramName::MPHIL,
+            'Doctor of Software Engineering' => ProgramName::DSE
+        ];
+        
+        $enumProgramName = $programNameMapping[$programName] ?? $programName;
+        
+        // Check if the mapped value is valid
+        if (!ProgramName::isValid($enumProgramName)) {
+            \Illuminate\Support\Facades\Log::error("Invalid program name in ImportDataProcessor", [
+                'original' => $row['program_name'],
+                'trimmed' => $programName,
+                'mapped' => $enumProgramName,
+                'validPrograms' => ProgramName::all()
+            ]);
+            return null;
+        }
+        
+        if (!Department::isValid($row['student_department'])) {
+            return null;
+        }
+        
+        $programData = [
+            'program_name' => $programName, // Store the full program name
+            'program_code' => $this->generateProgramCode($programName), // Use original name for code generation
+            'department' => $row['student_department'],
+            'total_semesters' => $this->getTotalSemesters($programName),
+            'evaluation_semester' => $this->getEvaluationSemester($programName)
+        ];
+        
+        $existingProgram = Program::where('program_name', $programName)
+            ->where('department', $row['student_department'])
+            ->first();
+            
         if ($existingProgram) {
             $existingProgram->update($programData);
             $result['programs_updated']++;
@@ -253,7 +283,7 @@ class ImportDataProcessor
 
         // Add Program Coordinator role if is_coordinator is true
         if ($isCoordinator) {
-            $rolesToAssign[] = \App\Enums\UserRole::PROGRAM_COORDINATOR;
+            $rolesToAssign[] = UserRole::PROGRAM_COORDINATOR;
         }
 
         // Assign all roles
@@ -303,13 +333,13 @@ class ImportDataProcessor
         // Assign roles based on lecturer type
         switch ($lecturerType) {
             case 'main_supervisor':
-                return \App\Enums\UserRole::SUPERVISOR;
+                return UserRole::SUPERVISOR;
             
             case 'co_supervisor':
-                return \App\Enums\UserRole::CO_SUPERVISOR;
+                return UserRole::CO_SUPERVISOR;
             
             default:
-                return \App\Enums\UserRole::SUPERVISOR;
+                return UserRole::SUPERVISOR;
         }
     }
 
@@ -477,12 +507,9 @@ class ImportDataProcessor
     protected function generateProgramCode($programName)
     {
         $mapping = [
-            'Master of Computer Science' => 'MCS',
-            'Master of Information Technology' => 'MIT',
             'Doctor of Philosophy' => 'PhD',
             'Master of Philosophy' => 'MPhil',
-            'Doctor of Software Engineering' => 'DSE',
-            'Master of Software Engineering' => 'MSE'
+            'Doctor of Software Engineering' => 'DSE'
         ];
 
         return $mapping[$programName] ?? 'UNKNOWN';
@@ -491,12 +518,9 @@ class ImportDataProcessor
     protected function getTotalSemesters($programName)
     {
         $mapping = [
-            'Master of Computer Science' => 4,
-            'Master of Information Technology' => 4,
-            'Doctor of Philosophy' => 8,
+            'Doctor of Philosophy' => 6,
             'Master of Philosophy' => 4,
-            'Doctor of Software Engineering' => 8,
-            'Master of Software Engineering' => 8
+            'Doctor of Software Engineering' => 8
         ];
 
         return $mapping[$programName] ?? 4;
@@ -505,12 +529,9 @@ class ImportDataProcessor
     protected function getEvaluationSemester($programName)
     {
         $mapping = [
-            'Master of Computer Science' => 2,
-            'Master of Information Technology' => 2,
-            'Doctor of Philosophy' => 3,
+            'Doctor of Philosophy' => 2,
             'Master of Philosophy' => 2,
-            'Doctor of Software Engineering' => 6,
-            'Master of Software Engineering' => 6
+            'Doctor of Software Engineering' => 6
         ];
 
         return $mapping[$programName] ?? 2;

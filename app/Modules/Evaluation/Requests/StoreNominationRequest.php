@@ -14,6 +14,7 @@ class StoreNominationRequest
             'student_id' => ['required', 'exists:students,id'],
             'semester' => ['required', 'integer', 'min:1'],
             'academic_year' => ['required', 'string'],
+            'research_title' => ['nullable', 'string', 'max:500'],
             'examiner1_id' => ['nullable', 'exists:lecturers,id', 'different:examiner2_id', 'different:examiner3_id'],
             'examiner2_id' => ['nullable', 'exists:lecturers,id', 'different:examiner1_id', 'different:examiner3_id'],
             'examiner3_id' => ['nullable', 'exists:lecturers,id', 'different:examiner1_id', 'different:examiner2_id'],
