@@ -159,4 +159,18 @@ class LecturerController extends Controller
             );
         }
     }
+
+    public function getSupervisorSuggestions(Request $request): JsonResponse
+    {
+        $department = $request->query('department');
+        $lecturers = $this->lecturerService->getSupervisorsByDepartment($department);
+        return $this->sendResponse($lecturers, 'Supervisor suggestions retrieved successfully!');
+    }
+
+    public function getCoSupervisorSuggestions(Request $request): JsonResponse
+    {
+        $supervisorId = $request->query('supervisor_id');
+        $lecturers = $this->lecturerService->getCoSupervisorsExcluding($supervisorId);
+        return $this->sendResponse($lecturers, 'Co-supervisor suggestions retrieved successfully!');
+    }
 }

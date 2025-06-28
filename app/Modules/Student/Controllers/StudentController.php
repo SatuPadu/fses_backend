@@ -6,15 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Modules\Student\Requests\StoreStudentRequest;
 use App\Modules\Student\Requests\UpdateStudentRequest;
 use App\Modules\Student\Requests\StudentGetRequest;
-use App\Modules\Student\Requests\ImportStudentRequest;
 use App\Modules\Student\Services\StudentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Validator;
-use Throwable;
 use Illuminate\Http\Response;
+use Throwable;
 
 /**
  * @OA\Tag(
@@ -71,8 +69,8 @@ class StudentController extends Controller
             return $this->sendCreatedResponse($student, 'Student added successfully!');
         } catch (ModelNotFoundException $e) {
             return $this->sendError(
-                'Supervisor not found',
-                ['error' => 'Supervisor not found'],
+                'Research Supervisor or co-supervisor not found',
+                ['error' => 'One or more supervisors not found'],
                 Response::HTTP_NOT_FOUND
             );
         } catch (QueryException $e) {
@@ -132,8 +130,8 @@ class StudentController extends Controller
             return $this->sendResponse($student, 'Student info updated successfully!');
         } catch (ModelNotFoundException $e) {
             return $this->sendError(
-                'Student not found',
-                ['error' => 'Student not found'],
+                'Student or supervisor not found',
+                ['error' => 'Student or one or more supervisors not found'],
                 Response::HTTP_NOT_FOUND
             );
         } catch (QueryException $e) {

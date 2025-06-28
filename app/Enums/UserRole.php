@@ -17,7 +17,7 @@ class UserRole
      * Supervisor role
      * Responsible for supervising students and their research
      */
-    public const SUPERVISOR = 'Supervisor';
+    public const SUPERVISOR = 'ResearchSupervisor';
     
     /**
      * Co-Supervisor role
@@ -69,7 +69,7 @@ class UserRole
     {
         return [
             self::OFFICE_ASSISTANT => 'Office Assistant',
-            self::SUPERVISOR => 'Supervisor',
+            self::SUPERVISOR => 'Research Supervisor',
             self::CO_SUPERVISOR => 'Co-Supervisor',
             self::PROGRAM_COORDINATOR => 'Program Coordinator',
             self::CHAIRPERSON => 'Chairperson',

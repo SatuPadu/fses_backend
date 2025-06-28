@@ -29,3 +29,15 @@ class Program extends Model
         return $this->hasMany(\App\Modules\Student\Models\Student::class);
     }
 }
+
+class ProgramName
+{
+    public const PHD = 'PhD';
+    public const MPHIL = 'MPhil';
+    public const DSE = 'DSE';
+
+    public static function all(): array
+    {
+        return [self::PHD, self::MPHIL, self::DSE];
+    }
+}

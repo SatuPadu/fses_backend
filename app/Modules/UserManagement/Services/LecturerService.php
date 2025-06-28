@@ -72,13 +72,14 @@ class LecturerService
         elseif (in_array('ProgramCoordinator', $userRoles)) {
             $query->where('department', $user->department);
         }
-        // Check if user is a Supervisor (can only see lecturers related to their students)
-        elseif (in_array('Supervisor', $userRoles)) {
+        // Check if user is a Research Supervisor (can only see lecturers related to their students)
+        elseif (in_array('ResearchSupervisor', $userRoles)) {
             $query->where(function ($q) use ($user) {
                 // Can see themselves
                 $q->where('staff_number', $user->staff_number)
                 // Can see co-supervisors of their students
                 ->orWhereHas('coSupervisors', function ($coSupQ) use ($user) {
+                    $coSupQ->where('lecturer_id', $user->lecturer->id);
                     $coSupQ->whereHas('student', function ($studQ) use ($user) {
                         $studQ->whereHas('mainSupervisor', function ($mainSupQ) use ($user) {
                             $mainSupQ->where('staff_number', $user->staff_number);
@@ -197,13 +198,14 @@ class LecturerService
         elseif (in_array('ProgramCoordinator', $userRoles)) {
             $query->where('department', $user->department);
         }
-        // Check if user is a Supervisor (can only see lecturers related to their students)
-        elseif (in_array('Supervisor', $userRoles)) {
+        // Check if user is a Research Supervisor (can only see lecturers related to their students)
+        elseif (in_array('ResearchSupervisor', $userRoles)) {
             $query->where(function ($q) use ($user) {
                 // Can see themselves
                 $q->where('staff_number', $user->staff_number)
                 // Can see co-supervisors of their students
                 ->orWhereHas('coSupervisors', function ($coSupQ) use ($user) {
+                    $coSupQ->where('lecturer_id', $user->lecturer->id);
                     $coSupQ->whereHas('student', function ($studQ) use ($user) {
                         $studQ->whereHas('mainSupervisor', function ($mainSupQ) use ($user) {
                             $mainSupQ->where('staff_number', $user->staff_number);
@@ -624,5 +626,15 @@ class LecturerService
             'total_students' => $coSupervisors->count(),
             'by_program' => $workloadByProgram,
         ];
+    }
+
+    public function getSupervisorsByDepartment($department)
+    {
+        return Lecturer::where('department', $department)->get();
+    }
+
+    public function getCoSupervisorsExcluding($supervisorId)
+    {
+        return Lecturer::where('user_id', '!=', $supervisorId)->get();
     }
 }

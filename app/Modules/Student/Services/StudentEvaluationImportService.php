@@ -6,6 +6,7 @@ use App\Enums\Department;
 use App\Enums\LecturerTitle;
 use App\Enums\EvaluationType;
 use App\Enums\NominationStatus;
+use App\Enums\ProgramName;
 
 class StudentEvaluationImportService
 {
@@ -16,162 +17,201 @@ class StudentEvaluationImportService
     {
         $errors = [];
 
-        // Required fields validation
-        $requiredFields = [
+        // STEP 1: Always validate basic required fields
+        $errors = array_merge($errors, $this->validateBasicRequiredFields($row));
+
+        // STEP 2: Validate common fields (emails, semester, enums, program)
+        $errors = array_merge($errors, $this->validateCommonFields($row));
+
+        return $errors;
+    }
+
+    /**
+     * Validate basic required fields that every row must have.
+     * Required fields include everything up to main_supervisor_specialization.
+     * Co-supervisor fields have different requirements based on external_institution.
+     */
+    protected function validateBasicRequiredFields(array $row): array
+    {
+        $errors = [];
+        
+        // Main required fields (always required)
+        $mainRequiredFields = [
             'student_matric_number', 'student_name', 'student_email', 'program_name',
-            'current_semester', 'student_department', 'evaluation_type',
-            'main_supervisor_staff_number', 'main_supervisor_name', 'main_supervisor_email',
-            'examiner1_staff_number', 'examiner1_name', 'examiner1_email',
-            'examiner2_staff_number', 'examiner2_name', 'examiner2_email',
-            'examiner3_staff_number', 'examiner3_name', 'examiner3_email',
-            'chairperson_staff_number', 'chairperson_name', 'chairperson_email'
+            'current_semester', 'student_department', 'evaluation_type', 'country', 'research_title',
+            'main_supervisor_staff_number', 'main_supervisor_name', 'main_supervisor_title', 'main_supervisor_department',
+            'main_supervisor_email', 'main_supervisor_phone', 'main_supervisor_specialization'
         ];
 
-        foreach ($requiredFields as $field) {
+        // First validate all main required fields
+        foreach ($mainRequiredFields as $field) {
             if (empty($row[$field])) {
                 $errors[] = "Required field '{$field}' is missing or empty";
             }
         }
 
-        // Email validation
-        $emailFields = [
-            'student_email', 'main_supervisor_email', 'co_supervisor_email',
-            'examiner1_email', 'examiner2_email', 'examiner3_email', 'chairperson_email'
+        // Special handling for boolean fields
+        if (!isset($row['main_supervisor_is_coordinator']) || 
+            !in_array(strtolower($row['main_supervisor_is_coordinator']), ['yes', 'no', 'true', 'false', '1', '0', ''])) {
+            $errors[] = "main_supervisor_is_coordinator must be a boolean value (yes/no, true/false, 1/0)";
+        }
+
+        // Check if any co-supervisor fields are present
+        $hasCoSupervisorData = $this->hasPartialCoSupervisorData($row);
+        
+        if ($hasCoSupervisorData) {
+            // Check if external institution is provided
+            $hasExternalInstitution = !empty($row['co_supervisor_external_institution']);
+            
+            if ($hasExternalInstitution) {
+                // External co-supervisor: only core fields required
+                $coSupervisorRequiredFields = [
+                    'co_supervisor_name', 'co_supervisor_title', 'co_supervisor_department',
+                    'co_supervisor_email', 'co_supervisor_specialization'
+                ];
+                
+                foreach ($coSupervisorRequiredFields as $field) {
+                    if (empty($row[$field])) {
+                        $errors[] = "External co-supervisor information is incomplete. Field '{$field}' is required for external co-supervisors";
+                    }
+                }
+            } else {
+                // Internal co-supervisor: all fields required except external_institution
+                $coSupervisorRequiredFields = [
+                    'co_supervisor_staff_number', 'co_supervisor_name', 'co_supervisor_title', 'co_supervisor_department',
+                    'co_supervisor_email', 'co_supervisor_phone', 'co_supervisor_specialization'
+                ];
+
+                foreach ($coSupervisorRequiredFields as $field) {
+                    if (empty($row[$field])) {
+                        $errors[] = "Internal co-supervisor information is incomplete. Field '{$field}' is required for internal co-supervisors";
+                    }
+                }
+
+                // Validate co-supervisor boolean field for internal co-supervisors
+                if (!isset($row['co_supervisor_is_coordinator']) || 
+                    !in_array(strtolower($row['co_supervisor_is_coordinator']), ['yes', 'no', 'true', 'false', '1', '0', ''])) {
+                    $errors[] = "co_supervisor_is_coordinator must be a boolean value (yes/no, true/false, 1/0) for internal co-supervisors";
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Check if any co-supervisor fields contain data
+     */
+    protected function hasPartialCoSupervisorData(array $row): bool
+    {
+        $coSupervisorFields = [
+            'co_supervisor_staff_number', 'co_supervisor_name', 'co_supervisor_title',
+            'co_supervisor_department', 'co_supervisor_email', 'co_supervisor_phone',
+            'co_supervisor_specialization', 'co_supervisor_external_institution'
         ];
 
-        foreach ($emailFields as $field) {
+        foreach ($coSupervisorFields as $field) {
+            if (!empty($row[$field])) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Validate common fields that apply to all rows when present
+     */
+    protected function validateCommonFields(array $row): array
+    {
+        $errors = [];
+
+        // Email validation (required emails must be validated)
+        $requiredEmails = ['student_email', 'main_supervisor_email', 'co_supervisor_email'];
+        foreach ($requiredEmails as $field) {
             if (!empty($row[$field]) && !filter_var($row[$field], FILTER_VALIDATE_EMAIL)) {
                 $errors[] = "Invalid email format for '{$field}': {$row[$field]}";
             }
         }
 
-        // Enum validation
+        // Semester validation
+        if (!empty($row['current_semester'])) {
+            $semester = (int)$row['current_semester'];
+            if ($semester < 1 || $semester > 20) {
+                $errors[] = "Invalid semester number: {$row['current_semester']}. Must be between 1-20";
+            }
+        }
+
+        // Enum validation (only for present fields)
         if (!empty($row['student_department']) && !Department::isValid($row['student_department'])) {
             $errors[] = "Invalid department: {$row['student_department']}";
         }
-
         if (!empty($row['evaluation_type']) && !EvaluationType::isValid($row['evaluation_type'])) {
             $errors[] = "Invalid evaluation type: {$row['evaluation_type']}";
         }
 
-        if (!empty($row['nomination_status']) && !NominationStatus::isValid($row['nomination_status'])) {
-            $errors[] = "Invalid nomination status: {$row['nomination_status']}";
-        }
-
-        // Lecturer title validation
+        // Lecturer title validation (required and optional)
         $lecturerTitles = [
-            'main_supervisor_title', 'co_supervisor_title', 'examiner1_title',
-            'examiner2_title', 'examiner3_title', 'chairperson_title'
+            'main_supervisor_title', 'co_supervisor_title'
         ];
-
         foreach ($lecturerTitles as $titleField) {
             if (!empty($row[$titleField]) && !LecturerTitle::isValid($row[$titleField])) {
                 $errors[] = "Invalid lecturer title '{$row[$titleField]}' for {$titleField}";
             }
         }
 
-        // Business rule validation
-        $this->validateBusinessRules($row, $errors);
+        // Program validation with mapping
+        if (!empty($row['program_name'])) {
+            $trimmedProgramName = trim($row['program_name']);
+            
+            // Map full program names to enum values
+            $programNameMapping = [
+                'Doctor of Philosophy' => ProgramName::PHD,
+                'Master of Philosophy' => ProgramName::MPHIL,
+                'Doctor of Software Engineering' => ProgramName::DSE
+            ];
+            
+            $enumProgramName = $programNameMapping[$trimmedProgramName] ?? $trimmedProgramName;
+            
+            if (!ProgramName::isValid($enumProgramName)) {
+                $errors[] = "Invalid program name: {$row['program_name']}. Valid options are: Doctor of Philosophy, Master of Philosophy, Doctor of Software Engineering, or the short forms: " . implode(', ', ProgramName::all());
+            } else {
+                // Validate semester for program type using the mapped enum value
+                $semester = (int)($row['current_semester'] ?? 0);
+                
+                if ($semester > 0) {
+                    switch ($enumProgramName) {
+                        case ProgramName::MPHIL:
+                            if ($semester != 2) {
+                                $errors[] = "Master of Philosophy students must be in semester 2 for evaluation, found semester {$semester}";
+                            }
+                            break;
+                        case ProgramName::PHD:
+                            if ($semester != 2) {
+                                $errors[] = "Doctor of Philosophy students must be in semester 2 for evaluation, found semester {$semester}";
+                            }
+                            break;
+                        case ProgramName::DSE:
+                            if ($semester < 6 || $semester > 8) {
+                                $errors[] = "Doctor of Software Engineering students must be in semester 6-8 for evaluation, found semester {$semester}";
+                            }
+                            break;
+                    }
+                }
+            }
+        }
 
         return $errors;
     }
 
     /**
-     * Validate business rules for examiner and chairperson assignments
-     */
-    protected function validateBusinessRules(array $row, array &$errors): void
-    {
-        // Examiner 1 must be at least Associate Professor
-        if (!empty($row['examiner1_title'])) {
-            if (!in_array($row['examiner1_title'], [LecturerTitle::PROFESSOR_MADYA, LecturerTitle::PROFESSOR])) {
-                $errors[] = "Examiner 1 must be at least Associate Professor (Professor Madya)";
-            }
-        }
-
-        // If main supervisor is Professor, Examiner 1 must be Professor
-        if (!empty($row['main_supervisor_title']) && $row['main_supervisor_title'] === LecturerTitle::PROFESSOR) {
-            if (!empty($row['examiner1_title']) && $row['examiner1_title'] !== LecturerTitle::PROFESSOR) {
-                $errors[] = "If main supervisor is Professor, Examiner 1 must also be Professor";
-            }
-        }
-
-        // Chairperson must be at least Associate Professor
-        if (!empty($row['chairperson_title'])) {
-            if (!in_array($row['chairperson_title'], [LecturerTitle::PROFESSOR_MADYA, LecturerTitle::PROFESSOR])) {
-                $errors[] = "Chairperson must be at least Associate Professor (Professor Madya)";
-            }
-        }
-
-        // If main supervisor is Professor, chairperson must be Professor
-        if (!empty($row['main_supervisor_title']) && $row['main_supervisor_title'] === LecturerTitle::PROFESSOR) {
-            if (!empty($row['chairperson_title']) && $row['chairperson_title'] !== LecturerTitle::PROFESSOR) {
-                $errors[] = "If main supervisor is Professor, chairperson must also be Professor";
-            }
-        }
-
-        // If any examiner is Professor, chairperson must be Professor
-        $examinerTitles = [
-            $row['examiner1_title'] ?? '',
-            $row['examiner2_title'] ?? '',
-            $row['examiner3_title'] ?? ''
-        ];
-
-        if (in_array(LecturerTitle::PROFESSOR, $examinerTitles)) {
-            if (!empty($row['chairperson_title']) && $row['chairperson_title'] !== LecturerTitle::PROFESSOR) {
-                $errors[] = "If any examiner is Professor, chairperson must also be Professor";
-            }
-        }
-
-        // Check for duplicate assignments (same person cannot be supervisor, examiner, and chair)
-        $this->validateDuplicateAssignments($row, $errors);
-    }
-
-    /**
-     * Validate that the same person is not assigned multiple roles
-     */
-    protected function validateDuplicateAssignments(array $row, array &$errors): void
-    {
-        $emails = [
-            'main_supervisor' => $row['main_supervisor_email'] ?? '',
-            'co_supervisor' => $row['co_supervisor_email'] ?? '',
-            'examiner1' => $row['examiner1_email'] ?? '',
-            'examiner2' => $row['examiner2_email'] ?? '',
-            'examiner3' => $row['examiner3_email'] ?? '',
-            'chairperson' => $row['chairperson_email'] ?? ''
-        ];
-
-        $emailCounts = array_count_values(array_filter($emails));
-        
-        foreach ($emailCounts as $email => $count) {
-            if ($count > 1) {
-                $roles = array_keys(array_filter($emails, function($value) use ($email) {
-                    return $value === $email;
-                }));
-                $errors[] = "Email {$email} is assigned to multiple roles: " . implode(', ', $roles);
-            }
-        }
-    }
-
-    /**
      * Get program mapping for different program types
+     * Updated to use the new enum values and mapping
      */
     public function getProgramMapping(): array
     {
         return [
-            'Master of Computer Science' => [
-                'code' => 'MCS',
-                'total_semesters' => 4,
-                'evaluation_semester' => 3
-            ],
-            'Master of Information Technology' => [
-                'code' => 'MIT',
-                'total_semesters' => 4,
-                'evaluation_semester' => 3
-            ],
             'Doctor of Philosophy' => [
                 'code' => 'PhD',
-                'total_semesters' => 8,
-                'evaluation_semester' => 3
+                'total_semesters' => 6,
+                'evaluation_semester' => 2
             ],
             'Master of Philosophy' => [
                 'code' => 'MPhil',
@@ -181,20 +221,22 @@ class StudentEvaluationImportService
             'Doctor of Software Engineering' => [
                 'code' => 'DSE',
                 'total_semesters' => 8,
-                'evaluation_semester' => 8
+                'evaluation_semester' => 6
             ]
         ];
     }
 
     /**
-     * Check if lecturer is external (only examiner 2 can be external)
+     * Check if lecturer is external (only co-supervisor can be external)
      */
     public function isExternalLecturer(string $type, array $row): bool
     {
-        if ($type === 'examiner2') {
-            return !empty($row['examiner2_external_institution']);
+        switch ($type) {
+            case 'co_supervisor':
+                return !empty($row['co_supervisor_external_institution']);
+            default:
+                return false;
         }
-        return false;
     }
 
     /**
@@ -206,28 +248,67 @@ class StudentEvaluationImportService
             'total_rows' => count($results),
             'successful' => 0,
             'failed' => 0,
+            'skipped' => 0,
             'programs_created' => 0,
+            'programs_updated' => 0,
             'lecturers_created' => 0,
+            'lecturers_updated' => 0,
             'students_created' => 0,
-            'evaluations_created' => 0,
+            'students_updated' => 0,
             'users_created' => 0,
+            'users_updated' => 0,
             'errors' => []
         ];
 
         foreach ($results as $result) {
-            if ($result['success']) {
+            if (isset($result['skipped']) && $result['skipped']) {
+                $summary['skipped']++;
+            } elseif ($result['success']) {
                 $summary['successful']++;
-                $summary['programs_created'] += $result['programs_created'] ?? 0;
-                $summary['lecturers_created'] += $result['lecturers_created'] ?? 0;
-                $summary['students_created'] += $result['students_created'] ?? 0;
-                $summary['evaluations_created'] += $result['evaluations_created'] ?? 0;
-                $summary['users_created'] += $result['users_created'] ?? 0;
+
+                // Update creation/update counts
+                foreach ($result as $key => $value) {
+                    if (isset($summary[$key]) && is_numeric($value)) {
+                        $summary[$key] += $value;
+                    }
+                }
             } else {
                 $summary['failed']++;
-                $summary['errors'][] = $result['error'];
+                if (isset($result['error'])) {
+                    $summary['errors'][] = $result['error'];
+                }
             }
         }
 
         return $summary;
     }
-} 
+
+    /**
+     * Check if all co-supervisor fields are present and non-empty
+     * This method is updated to handle external vs internal co-supervisors
+     */
+    public function hasCompleteCoSupervisorData(array $row): bool
+    {
+        $hasExternalInstitution = !empty($row['co_supervisor_external_institution']);
+        
+        if ($hasExternalInstitution) {
+            // External co-supervisor: only core fields required
+            $fields = [
+                'co_supervisor_name', 'co_supervisor_title', 'co_supervisor_department',
+                'co_supervisor_email', 'co_supervisor_specialization'
+            ];
+        } else {
+            // Internal co-supervisor: all fields required except external_institution
+            $fields = [
+                'co_supervisor_staff_number', 'co_supervisor_name', 'co_supervisor_title',
+                'co_supervisor_department', 'co_supervisor_is_coordinator', 'co_supervisor_email',
+                'co_supervisor_phone', 'co_supervisor_specialization'
+            ];
+        }
+        
+        foreach ($fields as $field) {
+            if (empty($row[$field])) return false;
+        }
+        return true;
+    }
+}

@@ -24,28 +24,27 @@ class AuthService
             ->orWhere('staff_number', $credentials['identity'])
             ->first();
 
+        if (!$user) {
+            throw new \Exception('User not found.');
+        }
+
         // Check if account is locked
-        if ($user && !$user->is_active) {
+        if (!$user->is_active) {
             throw new \Exception('Account is locked due to multiple failed login attempts with wrong password. Please contact administrator.');
         }
-        
+
         // Verify password
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
-            if ($user) {
-                // Increment failed login attempts
-                $user->failed_login_attempts += 1;
-                
-                // Lock account if 3 failed attempts
-                if ($user->failed_login_attempts > 2) {
-                    $user->is_active = false;
-                }
-                
-                $user->save();
+        if (!Hash::check($credentials['password'], $user->password)) {
+            $user->failed_login_attempts += 1;
+            if ($user->failed_login_attempts > 2) {
+                $user->is_active = false;
             }
+            $user->save();
+
             if ($user->failed_login_attempts > 2) {
                 throw new \Exception('Account is locked due to multiple failed login attempts with wrong password. Please contact administrator.');
             }
-            throw new \Exception('Invalid credentials provided.');
+            throw new \Exception('Incorrect password.');
         }
 
         // Reset failed login attempts on successful login

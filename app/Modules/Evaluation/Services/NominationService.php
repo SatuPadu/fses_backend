@@ -16,7 +16,7 @@ use App\Modules\UserManagement\Models\Lecturer;
 use App\Modules\Evaluation\Models\Evaluation;
 
 /**
- * Service class for handling business logic related to the Supervisor role.
+ * Service class for handling business logic related to the Research Supervisor role.
  */
 class NominationService
 {
@@ -87,6 +87,12 @@ class NominationService
             $status = NominationStatus::NOMINATED;
         }
 
+        // Update student's research title if provided
+        if (isset($request['research_title'])) {
+            $student = Student::find($request['student_id']);
+            $student->update(['research_title' => $request['research_title']]);
+        }
+
         $evaluation = Evaluation::create([
             'student_id' => $request['student_id'],
             'semester' => $request['semester'],
@@ -116,6 +122,12 @@ class NominationService
 
         if ($evaluation->nomination_status == NominationStatus::LOCKED) {
             throw new Exception('Examiner Nominations have been locked! No further modifications are allowed!');
+        }
+
+        // Update student's research title if provided
+        if (isset($request['research_title'])) {
+            $student = Student::find($evaluation->student_id);
+            $student->update(['research_title' => $request['research_title']]);
         }
 
         $evaluation->semester = $request['semester'] ?? $evaluation->semester;
@@ -287,6 +299,15 @@ class NominationService
             $query->where('academic_year', $filters['academic_year']);
         }
 
+        if (isset($filters['chairperson_assigned'])) {
+            if (filter_var($filters['chairperson_assigned'], FILTER_VALIDATE_BOOLEAN)) {
+                $query->whereNotNull('examiner1_id')
+                      ->whereNotNull('examiner2_id')
+                      ->whereNotNull('examiner3_id')
+                      ->whereNotNull('chairperson_id');
+            }
+        }
+
         // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
@@ -303,8 +324,8 @@ class NominationService
                 $q->where('department', $user->department);
             });
         }
-        // Check if user is a Supervisor (can only see their supervised students)
-        elseif (in_array('Supervisor', $userRoles)) {
+        // Check if user is a Research Supervisor (can only see their supervised students)
+        elseif (in_array('ResearchSupervisor', $userRoles)) {
             $query->whereHas('student', function ($q) use ($user) {
                 $q->whereHas('mainSupervisor', function ($q2) use ($user) {
                     $q2->where('staff_number', $user->staff_number);

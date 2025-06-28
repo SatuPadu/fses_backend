@@ -7,6 +7,7 @@ use App\Enums\LecturerTitle;
 use App\Enums\UserRole;
 use App\Enums\NominationStatus;
 use App\Enums\EvaluationType;
+use App\Enums\ProgramName;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 
@@ -53,6 +54,7 @@ class EnumController extends Controller
             'roles' => UserRole::forSelect(),
             'nominationStatus' => NominationStatus::forSelect(),
             'evaluationTypes' => EvaluationType::forSelect(),
+            'programNames' => ProgramName::forSelect(),
         ];
 
         return $this->sendResponse($enums, 'Enum lists retrieved successfully!');

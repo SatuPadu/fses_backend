@@ -58,6 +58,11 @@ Route::prefix('password')->group(function () {
 Route::prefix('lecturers')->middleware(['jwt.verify', 'password.updated', 'permission:lecturers,view'])->group(function () {
     Route::get('/', [LecturerController::class, 'index']);
     Route::post('/', [LecturerController::class, 'store'])->middleware('permission:lecturers,create');
+    
+    // Supervisor Suggestions Routes - must come before {id} route
+    Route::get('/supervisor-suggestions', [LecturerController::class, 'getSupervisorSuggestions']);
+    Route::get('/co-supervisor-suggestions', [LecturerController::class, 'getCoSupervisorSuggestions']);
+    
     Route::get('/{id}', [LecturerController::class, 'lecturerDetail']);
     Route::put('/{id}', [LecturerController::class, 'update'])->middleware('permission:lecturers,edit');
     Route::delete('/{id}', [LecturerController::class, 'destroy'])->middleware('permission:lecturers,delete');
@@ -111,13 +116,13 @@ Route::prefix('programs')->middleware(['jwt.verify', 'password.updated', 'permis
 
 // Evaluation Routes
 Route::prefix('evaluations')->middleware(['jwt.verify', 'password.updated', 'permission:evaluations,view'])->group(function () {
-    // Nomination routes (Supervisor, Program Coordinator, PGAM)
+    // Nomination routes (Research Supervisor, Program Coordinator, PGAM)
     Route::prefix('nominations')->group(function () {
         Route::get('/', [NominationController::class, 'index']);
-        Route::post('/', [NominationController::class, 'store'])->middleware('role:Supervisor');
-        Route::put('/{id}', [NominationController::class, 'update'])->middleware('role:Supervisor');
-        Route::post('/{id}/postpone', [NominationController::class, 'postpone'])->middleware('role:Supervisor');
+        Route::post('/', [NominationController::class, 'store'])->middleware('role:ResearchSupervisor');
         Route::post('/lock', [NominationController::class, 'lockNominations'])->middleware('role:ProgramCoordinator');
+        Route::put('/{id}', [NominationController::class, 'update'])->middleware('role:ResearchSupervisor');
+        Route::post('/{id}/postpone', [NominationController::class, 'postpone'])->middleware('role:ResearchSupervisor');
     });
 
     // Assignment routes (Program Coordinator, PGAM)
@@ -129,7 +134,7 @@ Route::prefix('evaluations')->middleware(['jwt.verify', 'password.updated', 'per
     });
 });
 
-// Examiner Suggestions Routes (Supervisor, Program Coordinator, PGAM)
+// Examiner Suggestions Routes (Research Supervisor, Program Coordinator, PGAM)
 Route::prefix('examiner-suggestions')->middleware(['jwt.verify', 'password.updated', 'permission:evaluations,view'])->group(function () {
     Route::get('/examiner1/{studentId}', [ExaminerSuggestionController::class, 'getExaminer1Suggestions']);
     Route::get('/examiner2/{studentId}', [ExaminerSuggestionController::class, 'getExaminer2Suggestions']);

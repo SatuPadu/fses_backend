@@ -4,6 +4,7 @@ namespace App\Modules\Program\Services;
 
 use App\Modules\Program\Models\Program;
 use Illuminate\Support\Facades\DB;
+use App\Enums\ProgramName;
 
 /**
  * @service ProgramService
@@ -32,6 +33,7 @@ class ProgramService
     {
         $query = Program::query();
 
+        // Apply basic filters first
         if (isset($request['program_name'])) {
             $query->where('program_name', 'like', '%' . $request['program_name'] . '%');
         }
@@ -49,15 +51,17 @@ class ProgramService
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
         if (in_array('PGAM', $userRoles)) {
+            // PGAM can see all programs, but department filter from request should still apply
         }
         elseif (in_array('OfficeAssistant', $userRoles)) {
+            // OfficeAssistant can see all programs, but department filter from request should still apply
         }
         // Check if user is a Program Coordinator (can only see users from their department) 
         elseif (in_array('ProgramCoordinator', $userRoles)) {
             $query->where('department', $user->department);
         }
-        // Check if user is a Supervisor (can only see programs of their supervised students)
-        elseif (in_array('Supervisor', $userRoles)) {
+        // Check if user is a Research Supervisor (can only see programs of their supervised students)
+        elseif (in_array('ResearchSupervisor', $userRoles)) {
             $query->whereHas('students', function ($q) use ($user) {
                 $q->whereHas('mainSupervisor', function ($q2) use ($user) {
                     $q2->where('staff_number', $user->staff_number);
@@ -108,11 +112,26 @@ class ProgramService
      */
     public function create(array $data)
     {
+        $programName = trim($data['program_name']);
+        
+        // Map full program names to enum values for validation
+        $programNameMapping = [
+            'Doctor of Philosophy' => ProgramName::PHD,
+            'Master of Philosophy' => ProgramName::MPHIL,
+            'Doctor of Software Engineering' => ProgramName::DSE
+        ];
+        
+        $enumProgramName = $programNameMapping[$programName] ?? $programName;
+        
+        if (!ProgramName::isValid($enumProgramName)) {
+            throw new \Exception('Invalid program name: ' . $data['program_name'] . '. Valid options are: Doctor of Philosophy, Master of Philosophy, Doctor of Software Engineering, or the short forms: ' . implode(', ', ProgramName::all()));
+        }
+        
         try {
             DB::beginTransaction();
 
             $program = new Program();
-            $program->program_name = $data['program_name'];
+            $program->program_name = $programName;
             $program->program_code = $data['program_code'];
             $program->department = $data['department'];
             $program->total_semesters = $data['total_semesters'];
@@ -136,6 +155,21 @@ class ProgramService
      */
     public function update($id, array $data)
     {
+        $programName = trim($data['program_name']);
+        
+        // Map full program names to enum values for validation
+        $programNameMapping = [
+            'Doctor of Philosophy' => ProgramName::PHD,
+            'Master of Philosophy' => ProgramName::MPHIL,
+            'Doctor of Software Engineering' => ProgramName::DSE
+        ];
+        
+        $enumProgramName = $programNameMapping[$programName] ?? $programName;
+        
+        if (!ProgramName::isValid($enumProgramName)) {
+            throw new \Exception('Invalid program name: ' . $data['program_name'] . '. Valid options are: Doctor of Philosophy, Master of Philosophy, Doctor of Software Engineering, or the short forms: ' . implode(', ', ProgramName::all()));
+        }
+        
         try {
             DB::beginTransaction();
 
@@ -144,7 +178,7 @@ class ProgramService
                 throw new \Exception('Program not found', 404);
             }
 
-            $program->program_name = $data['program_name'];
+            $program->program_name = $programName; // Store the full program name
             $program->program_code = $data['program_code'];
             $program->department = $data['department'];
             $program->total_semesters = $data['total_semesters'];

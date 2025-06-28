@@ -40,7 +40,7 @@ class EvaluationPostponeTest extends TestCase
         // Create lecturer for supervisor
         Lecturer::factory()->create([
             'staff_number' => 'SUP001',
-            'name' => 'Test Supervisor'
+            'name' => 'Test Research Supervisor'
         ]);
 
         // Create student

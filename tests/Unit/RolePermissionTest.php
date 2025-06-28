@@ -87,7 +87,7 @@ class RolePermissionTest extends TestCase
         ]);
 
         $role = Role::create([
-            'role_name' => 'Supervisor',
+            'role_name' => 'ResearchSupervisor',
             'description' => 'Research Supervisor',
             'permissions' => [
                 'students' => ['view'],
@@ -100,7 +100,7 @@ class RolePermissionTest extends TestCase
         $this->assertTrue($this->permissionService->userCan($user, 'students', 'view'));
         $this->assertTrue($this->permissionService->userCan($user, 'evaluations', 'nominate'));
         $this->assertFalse($this->permissionService->userCan($user, 'students', 'delete'));
-        $this->assertTrue($this->permissionService->userHasSpecificRole($user, 'Supervisor'));
+        $this->assertTrue($this->permissionService->userHasSpecificRole($user, 'ResearchSupervisor'));
     }
 
     /** @test */
@@ -182,7 +182,7 @@ class RolePermissionTest extends TestCase
     public function it_can_use_role_scopes()
     {
         Role::create([
-            'role_name' => 'Supervisor',
+            'role_name' => 'ResearchSupervisor',
             'description' => 'Research Supervisor',
             'permissions' => ['students' => ['view']]
         ]);
@@ -193,9 +193,9 @@ class RolePermissionTest extends TestCase
             'permissions' => ['students' => ['view', 'create']]
         ]);
 
-        $supervisorRoles = Role::byName('Supervisor')->get();
+        $supervisorRoles = Role::byName('ResearchSupervisor')->get();
         $this->assertCount(1, $supervisorRoles);
-        $this->assertEquals('Supervisor', $supervisorRoles->first()->role_name);
+        $this->assertEquals('ResearchSupervisor', $supervisorRoles->first()->role_name);
 
         $rolesWithStudentPermission = Role::withModulePermission('students')->get();
         $this->assertCount(2, $rolesWithStudentPermission);
@@ -225,7 +225,7 @@ class RolePermissionTest extends TestCase
         ]);
 
         $role = Role::create([
-            'role_name' => 'Supervisor',
+            'role_name' => 'ResearchSupervisor',
             'description' => 'Research Supervisor',
             'permissions' => ['students' => ['view']]
         ]);
@@ -241,7 +241,7 @@ class RolePermissionTest extends TestCase
         $this->assertCount(1, $seatUsers);
         $this->assertEquals('SEAT', $seatUsers->first()->department);
 
-        $supervisorUsers = User::byRole('Supervisor')->get();
+        $supervisorUsers = User::byRole('ResearchSupervisor')->get();
         $this->assertCount(2, $supervisorUsers);
     }
 } 
