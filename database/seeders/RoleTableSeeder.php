@@ -74,7 +74,7 @@ class RoleTableSeeder extends Seeder
                 'permissions' => [
                     'students' => ['view', 'export'],
                     'users' => ['view'],
-                    'lecturers' => ['view'],
+                    'lecturers' => ['view', 'create'],
                     'programs' => ['view'],
                     'evaluations' => ['view', 'assign', 'lock'],
                     'nominations' => ['view', 'lock'],
