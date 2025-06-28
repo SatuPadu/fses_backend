@@ -299,12 +299,22 @@ class NominationService
             $query->where('academic_year', $filters['academic_year']);
         }
 
+        // Filter by chairperson assignment status
         if (isset($filters['chairperson_assigned'])) {
             if (filter_var($filters['chairperson_assigned'], FILTER_VALIDATE_BOOLEAN)) {
+                // Only nominations where all three examiners AND chairperson are assigned
                 $query->whereNotNull('examiner1_id')
                       ->whereNotNull('examiner2_id')
                       ->whereNotNull('examiner3_id')
                       ->whereNotNull('chairperson_id');
+            } else {
+                // Only nominations where any examiner or chairperson is missing
+                $query->where(function($q) {
+                    $q->whereNull('examiner1_id')
+                      ->orWhereNull('examiner2_id')
+                      ->orWhereNull('examiner3_id')
+                      ->orWhereNull('chairperson_id');
+                });
             }
         }
 
