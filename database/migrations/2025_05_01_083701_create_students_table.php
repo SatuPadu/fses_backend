@@ -26,6 +26,7 @@ return new class extends Migration
             $table->text('research_title')->nullable();
             $table->boolean('is_postponed')->default(false);
             $table->text('postponement_reason')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('role_name')->unique();
             $table->text('description');
             $table->json('permissions')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

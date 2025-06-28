@@ -4,6 +4,7 @@ namespace App\Modules\Program\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @model Program
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Program extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'programs';
 
     protected $fillable = [

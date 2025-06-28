@@ -20,6 +20,7 @@ return new class extends Migration
             $table->enum('department', Department::all());
             $table->integer('total_semesters');
             $table->integer('evaluation_semester');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

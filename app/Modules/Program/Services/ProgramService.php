@@ -209,6 +209,15 @@ class ProgramService
                 throw new \Exception('Program not found', 404);
             }
 
+            // Soft delete all students and their evaluations
+            foreach ($program->students as $student) {
+                // Soft delete all evaluations for this student
+                foreach ($student->evaluations as $evaluation) {
+                    $evaluation->delete();
+                }
+                $student->delete();
+            }
+
             $program->delete();
 
             DB::commit();

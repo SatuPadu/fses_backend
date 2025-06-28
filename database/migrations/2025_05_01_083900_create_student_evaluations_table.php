@@ -27,6 +27,7 @@ return new class extends Migration
             $table->dateTime('locked_at')->nullable();
             $table->integer('semester');
             $table->string('academic_year');
+            $table->softDeletes();
             $table->timestamps();
         });
     }
