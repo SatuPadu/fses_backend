@@ -65,32 +65,65 @@ class StudentExportService
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
+        // PGAM and Office Assistant can see all data
+        if (in_array('PGAM', $userRoles) || in_array('OfficeAssistant', $userRoles)) {
+            // No additional filtering needed
+        } else {
+            $query->where(function ($q) use ($user, $userRoles) {
+                $hasAccess = false;
 
-        if (in_array('PGAM', $userRoles)) {
-        }
-        elseif (in_array('OfficeAssistant', $userRoles)) {
-        }
-        // Check if user is a Program Coordinator (can only see users from their department) 
-        elseif (in_array('ProgramCoordinator', $userRoles)) {
-            $query->where('department', $user->department);
-        }
-        // Check if user is a Supervisor (can only see their supervised students)
-        elseif (in_array('Supervisor', $userRoles)) {
-            $query->whereHas('mainSupervisor', function ($q) use ($user) {
-                $q->where('staff_number', $user->staff_number);
-            });
-        }
-        // Check if user is a Chairperson (can only see students they're chairing)
-        elseif (in_array('Chairperson', $userRoles)) {
-            $query->whereHas('evaluations', function ($q) use ($user) {
-                $q->whereHas('chairperson', function ($cQ) use ($user) {
-                    $cQ->where('staff_number', $user->staff_number);
+                // Program Coordinator: students from their department
+                if (in_array('ProgramCoordinator', $userRoles)) {
+                    $q->orWhere('department', $user->department);
+                    $hasAccess = true;
+                }
+
+                // Supervisor: students they supervise
+                if (in_array('Supervisor', $userRoles)) {
+                    $q->orWhereHas('mainSupervisor', function ($sq) use ($user) {
+                        $sq->where('staff_number', $user->staff_number);
+                    });
+                    $hasAccess = true;
+                }
+
+                // Co-Supervisor: students they co-supervise
+                if (in_array('CoSupervisor', $userRoles)) {
+                    $q->orWhereHas('coSupervisors', function ($csq) use ($user) {
+                        $csq->where('lecturer_id', $user->lecturer->id);
+                    });
+                    $hasAccess = true;
+                }
+
+                // Chairperson: students they're chairing
+                if (in_array('Chairperson', $userRoles)) {
+                    $q->orWhereHas('evaluations', function ($eq) use ($user) {
+                        $eq->whereHas('chairperson', function ($cq) use ($user) {
+                            $cq->where('staff_number', $user->staff_number);
+                        });
+                    });
+                    $hasAccess = true;
+                }
+
+                // Examiner: always check for examiner positions (no role required)
+                $q->orWhereHas('evaluations', function ($eq) use ($user) {
+                    $eq->where(function ($exq) use ($user) {
+                        $exq->whereHas('examiner1', function ($e1q) use ($user) {
+                            $e1q->where('staff_number', $user->staff_number);
+                        })
+                        ->orWhereHas('examiner2', function ($e2q) use ($user) {
+                            $e2q->where('staff_number', $user->staff_number);
+                        })
+                        ->orWhereHas('examiner3', function ($e3q) use ($user) {
+                            $e3q->where('staff_number', $user->staff_number);
+                        });
+                    });
                 });
+
+                // If user has no relevant roles, return no results
+                if (!$hasAccess) {
+                    $q->whereRaw('1 = 0');
+                }
             });
-        }
-        // Default: no access (empty result)
-        else {
-            $query->whereRaw('1 = 0'); // This will return no results
         }
 
         // Apply additional filters

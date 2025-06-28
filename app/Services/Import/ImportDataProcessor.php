@@ -6,9 +6,9 @@ use App\Modules\Program\Models\Program;
 use App\Modules\UserManagement\Models\Lecturer;
 use App\Modules\Auth\Models\User;
 use App\Modules\Student\Models\Student;
-use App\Modules\Evaluation\Models\Evaluation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Modules\Student\Services\StudentEvaluationImportService;
 
 class ImportDataProcessor
 {
@@ -30,8 +30,6 @@ class ImportDataProcessor
             'users_updated' => 0,
             'students_created' => 0,
             'students_updated' => 0,
-            'evaluations_created' => 0,
-            'evaluations_updated' => 0,
             'co_supervisors_created' => 0,
             'co_supervisors_updated' => 0
         ];
@@ -41,44 +39,62 @@ class ImportDataProcessor
         $program = $this->createOrUpdateProgram($row, $result);
         $this->logProgramImport($program, $row, $result);
 
-        // 2. Create/Update Lecturers and Users
+        // 2. Create/Update Main Supervisor
         $this->progressTracker->updateStepProgress("Processing main supervisor data for row {$rowNumber}...");
         $mainSupervisor = $this->createOrUpdateLecturer($row, 'main_supervisor', $rowNumber, $result);
         $this->logLecturerImport($mainSupervisor, 'main_supervisor', $row, $result);
 
-        $this->progressTracker->updateStepProgress("Processing co-supervisor data for row {$rowNumber}...");
-        $coSupervisor = $this->createOrUpdateLecturer($row, 'co_supervisor', $rowNumber, $result);
-        $this->logLecturerImport($coSupervisor, 'co_supervisor', $row, $result);
+        // 3. Create/Update Co-Supervisor (different validation for internal vs external)
+        $hasExternalInstitution = !empty($row['co_supervisor_external_institution']);
+        
+        if ($hasExternalInstitution) {
+            // External co-supervisor: only name, title, department, email, specialization required
+            $requiredFields = [
+                'co_supervisor_name', 'co_supervisor_title', 'co_supervisor_department',
+                'co_supervisor_email', 'co_supervisor_specialization'
+            ];
+        } else {
+            // Internal co-supervisor: all fields required except external_institution
+            $requiredFields = [
+                'co_supervisor_staff_number', 'co_supervisor_name', 'co_supervisor_title',
+                'co_supervisor_department', 'co_supervisor_is_coordinator', 'co_supervisor_email',
+                'co_supervisor_phone', 'co_supervisor_specialization'
+            ];
+        }
+        
+        $allCoSupervisorFilled = true;
+        foreach ($requiredFields as $field) {
+            // For is_coordinator field, accept 0, '0', false as valid values
+            if ($field === 'co_supervisor_is_coordinator') {
+                if (!isset($row[$field])) {
+                    $allCoSupervisorFilled = false;
+                    break;
+                }
+            } else {
+                // For other fields, they must have actual content
+                if (!isset($row[$field]) || ($row[$field] === null) || ($row[$field] === '')) {
+                    $allCoSupervisorFilled = false;
+                    break;
+                }
+            }
+        }
+        $coSupervisor = null;
+        if ($allCoSupervisorFilled) {
+            $this->progressTracker->updateStepProgress("Processing co-supervisor data for row {$rowNumber}...");
+            $coSupervisor = $this->createOrUpdateLecturer($row, 'co_supervisor', $rowNumber, $result);
+            $this->logLecturerImport($coSupervisor, 'co_supervisor', $row, $result);
+        }
 
-        $this->progressTracker->updateStepProgress("Processing examiner 1 data for row {$rowNumber}...");
-        $examiner1 = $this->createOrUpdateLecturer($row, 'examiner1', $rowNumber, $result);
-        $this->logLecturerImport($examiner1, 'examiner1', $row, $result);
-
-        $this->progressTracker->updateStepProgress("Processing examiner 2 data for row {$rowNumber}...");
-        $examiner2 = $this->createOrUpdateLecturer($row, 'examiner2', $rowNumber, $result);
-        $this->logLecturerImport($examiner2, 'examiner2', $row, $result);
-
-        $this->progressTracker->updateStepProgress("Processing examiner 3 data for row {$rowNumber}...");
-        $examiner3 = $this->createOrUpdateLecturer($row, 'examiner3', $rowNumber, $result);
-        $this->logLecturerImport($examiner3, 'examiner3', $row, $result);
-
-        $this->progressTracker->updateStepProgress("Processing chairperson data for row {$rowNumber}...");
-        $chairperson = $this->createOrUpdateLecturer($row, 'chairperson', $rowNumber, $result);
-        $this->logLecturerImport($chairperson, 'chairperson', $row, $result);
-
-        // 3. Create/Update Student
+        // 4. Create/Update Student
         $this->progressTracker->updateStepProgress("Processing student data for row {$rowNumber}...");
         $student = $this->createOrUpdateStudent($row, $program, $mainSupervisor, $rowNumber, $result);
         $this->logStudentImport($student, $row, $result);
 
-        // 4. Create/Update Co-Supervisor relationship
-        $this->progressTracker->updateStepProgress("Processing co-supervisor relationship for row {$rowNumber}...");
-        $this->createOrUpdateCoSupervisor($student, $coSupervisor, $rowNumber, $result);
-
-        // 5. Create/Update Evaluation
-        $this->progressTracker->updateStepProgress("Processing evaluation data for row {$rowNumber}...");
-        $evaluation = $this->createOrUpdateEvaluation($row, $student, $examiner1, $examiner2, $examiner3, $chairperson, $rowNumber, $result);
-        $this->logEvaluationImport($evaluation, $row, $result);
+        // 5. Create/Update Co-Supervisor relationship
+        if ($coSupervisor) {
+            $this->progressTracker->updateStepProgress("Processing co-supervisor relationship for row {$rowNumber}...");
+            $this->createOrUpdateCoSupervisor($student, $coSupervisor, $rowNumber, $result);
+        }
 
         return $result;
     }
@@ -109,12 +125,48 @@ class ImportDataProcessor
     protected function createOrUpdateLecturer($row, $type, $rowNumber, &$result)
     {
         $prefix = $type . '_';
+
+        // For co-supervisor: different validation for internal vs external
+        if ($type === 'co_supervisor') {
+            $hasExternalInstitution = !empty($row[$prefix . 'external_institution']);
+            
+            if ($hasExternalInstitution) {
+                // External co-supervisor: only core fields required
+                $fields = ['name', 'title', 'department', 'email', 'specialization'];
+            } else {
+                // Internal co-supervisor: all fields required except external_institution
+                $fields = [
+                    'staff_number', 'name', 'title', 'department', 'is_coordinator', 'email',
+                    'phone', 'specialization'
+                ];
+            }
+            
+            foreach ($fields as $field) {
+                $key = $prefix . $field;
+                // For is_coordinator, accept 0, '0', false as valid values
+                if ($field === 'is_coordinator') {
+                    if (!isset($row[$key])) {
+                        return null;
+                    }
+                } else {
+                    // For other fields, they must have actual content
+                    if (!isset($row[$key]) || ($row[$key] === null) || ($row[$key] === '')) {
+                        return null;
+                    }
+                }
+            }
+        } else {
+            // For main supervisor: only name and staff_number required
+            if (empty($row[$prefix . 'name']) || empty($row[$prefix . 'staff_number'])) {
+                return null;
+            }
+        }
+
         $staffNumber = $row[$prefix . 'staff_number'];
         $email = $row[$prefix . 'email'];
         $isCoordinator = (bool)($row[$prefix . 'is_coordinator'] ?? false);
         $externalInstitution = $row[$prefix . 'external_institution'] ?? null;
 
-        // Check if lecturer exists by email
         $lecturer = Lecturer::where('email', $email)->first();
 
         $lecturerData = [
@@ -130,11 +182,9 @@ class ImportDataProcessor
         ];
 
         if ($lecturer) {
-            // Update existing lecturer
             $lecturer->update($lecturerData);
             $result['lecturers_updated']++;
         } else {
-            // Create new lecturer
             $lecturer = Lecturer::create($lecturerData);
             $result['lecturers_created']++;
         }
@@ -142,6 +192,11 @@ class ImportDataProcessor
         // Create user account for internal FAI lecturers only
         if ($lecturer->is_from_fai) {
             $user = $this->createOrUpdateUser($lecturer, $type, $isCoordinator, $result);
+            // Ensure lecturer->user_id is set for internal lecturers
+            if ($user) {
+                $lecturer->user_id = $user->id;
+                $lecturer->save();
+            }
         }
 
         return $lecturer;
@@ -149,12 +204,12 @@ class ImportDataProcessor
 
     protected function determineIfFromFAI($lecturerType, $externalInstitution)
     {
-        // Co-supervisors and examiner2 can be external
-        if ($lecturerType === 'co_supervisor' || $lecturerType === 'examiner2') {
+        // Co-supervisors can be external
+        if ($lecturerType === 'co_supervisor') {
             return empty($externalInstitution);
         }
         
-        // All other lecturer types are internal FAI lecturers
+        // Main supervisors are internal FAI lecturers
         return true;
     }
 
@@ -180,7 +235,7 @@ class ImportDataProcessor
             $result['users_updated']++;
         }
 
-        // Assign multiple roles based on lecturer type and coordinator status
+        // Assign roles based on lecturer type and coordinator status
         $this->assignUserRoles($user, $lecturer, $lecturerType, $isCoordinator);
 
         return $user;
@@ -253,16 +308,6 @@ class ImportDataProcessor
             case 'co_supervisor':
                 return \App\Enums\UserRole::CO_SUPERVISOR;
             
-            case 'chairperson':
-                return \App\Enums\UserRole::CHAIRPERSON;
-            
-            case 'examiner1':
-            case 'examiner2':
-            case 'examiner3':
-                // Examiners could be assigned different roles based on your business logic
-                // For now, assigning them as supervisors
-                return \App\Enums\UserRole::SUPERVISOR;
-            
             default:
                 return \App\Enums\UserRole::SUPERVISOR;
         }
@@ -300,16 +345,29 @@ class ImportDataProcessor
     {
         if (!$coSupervisor) return;
 
-        // Use the co_supervisors table
-        $existingCoSupervisor = DB::table('co_supervisors')
-            ->where('student_id', $student->id)
-            ->where('lecturer_id', $coSupervisor->id)
-            ->first();
+        // Check for existing relationship based on whether it's internal or external
+        $existingCoSupervisor = null;
+        
+        if ($coSupervisor->is_from_fai) {
+            // For internal co-supervisors, check by student_id and lecturer_id
+            $existingCoSupervisor = DB::table('co_supervisors')
+                ->where('student_id', $student->id)
+                ->where('lecturer_id', $coSupervisor->id)
+                ->first();
+        } else {
+            // For external co-supervisors, check by student_id and external_name
+            $existingCoSupervisor = DB::table('co_supervisors')
+                ->where('student_id', $student->id)
+                ->where('external_name', $coSupervisor->name)
+                ->where('external_institution', $coSupervisor->external_institution)
+                ->first();
+        }
 
         if ($existingCoSupervisor) {
             DB::table('co_supervisors')
                 ->where('id', $existingCoSupervisor->id)
                 ->update([
+                    'lecturer_id' => $coSupervisor->is_from_fai ? $coSupervisor->id : null,
                     'external_name' => $coSupervisor->is_from_fai ? null : $coSupervisor->name,
                     'external_institution' => $coSupervisor->external_institution,
                     'updated_at' => now()
@@ -341,35 +399,6 @@ class ImportDataProcessor
         ]);
     }
 
-    protected function createOrUpdateEvaluation($row, $student, $examiner1, $examiner2, $examiner3, $chairperson, $rowNumber, &$result)
-    {
-        $evaluationData = [
-            'student_id' => $student->id,
-            'nomination_status' => $row['nomination_status'],
-            'examiner1_id' => $examiner1->id,
-            'examiner2_id' => $examiner2->id,
-            'examiner3_id' => $examiner3->id,
-            'chairperson_id' => $chairperson->id,
-            'semester' => $row['semester'],
-            'academic_year' => $row['academic_year'],
-            'is_auto_assigned' => false,
-            'is_postponed' => (bool)($row['is_postponed'] ?? false),
-            'postponement_reason' => $row['postponement_reason'] ?? null
-        ];
-
-        $existingEvaluation = Evaluation::where('student_id', $student->id)->first();
-
-        if ($existingEvaluation) {
-            $existingEvaluation->update($evaluationData);
-            $result['evaluations_updated']++;
-            return $existingEvaluation;
-        } else {
-            $evaluation = Evaluation::create($evaluationData);
-            $result['evaluations_created']++;
-            return $evaluation;
-        }
-    }
-
     // Logging methods for detailed progress
     protected function logProgramImport($program, $row, $result)
     {
@@ -387,6 +416,8 @@ class ImportDataProcessor
 
     protected function logLecturerImport($lecturer, $type, $row, $result)
     {
+        if (!$lecturer) return;
+        
         $action = $result['lecturers_created'] > 0 ? 'created' : 'updated';
         $prefix = $type . '_';
         $isCoordinator = (bool)($row[$prefix . 'is_coordinator'] ?? false);
@@ -443,22 +474,6 @@ class ImportDataProcessor
         ]);
     }
 
-    protected function logEvaluationImport($evaluation, $row, $result)
-    {
-        $action = $result['evaluations_created'] > 0 ? 'created' : 'updated';
-        $this->progressTracker->updateDetailedProgress("Evaluation data {$action}", [
-            'table' => 'student_evaluations',
-            'action' => $action,
-            'data' => $evaluation->toArray(),
-            'row_data' => [
-                'student_matric_number' => $row['student_matric_number'],
-                'nomination_status' => $row['nomination_status'],
-                'semester' => $row['semester'],
-                'academic_year' => $row['academic_year']
-            ]
-        ]);
-    }
-
     protected function generateProgramCode($programName)
     {
         $mapping = [
@@ -466,7 +481,8 @@ class ImportDataProcessor
             'Master of Information Technology' => 'MIT',
             'Doctor of Philosophy' => 'PhD',
             'Master of Philosophy' => 'MPhil',
-            'Doctor of Software Engineering' => 'DSE'
+            'Doctor of Software Engineering' => 'DSE',
+            'Master of Software Engineering' => 'MSE'
         ];
 
         return $mapping[$programName] ?? 'UNKNOWN';
@@ -479,7 +495,8 @@ class ImportDataProcessor
             'Master of Information Technology' => 4,
             'Doctor of Philosophy' => 8,
             'Master of Philosophy' => 4,
-            'Doctor of Software Engineering' => 8
+            'Doctor of Software Engineering' => 8,
+            'Master of Software Engineering' => 8
         ];
 
         return $mapping[$programName] ?? 4;
@@ -488,13 +505,14 @@ class ImportDataProcessor
     protected function getEvaluationSemester($programName)
     {
         $mapping = [
-            'Master of Computer Science' => 3,
-            'Master of Information Technology' => 3,
+            'Master of Computer Science' => 2,
+            'Master of Information Technology' => 2,
             'Doctor of Philosophy' => 3,
             'Master of Philosophy' => 2,
-            'Doctor of Software Engineering' => 8
+            'Doctor of Software Engineering' => 6,
+            'Master of Software Engineering' => 6
         ];
 
-        return $mapping[$programName] ?? 3;
+        return $mapping[$programName] ?? 2;
     }
-} 
+}

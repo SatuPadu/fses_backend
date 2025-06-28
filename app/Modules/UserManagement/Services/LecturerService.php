@@ -79,6 +79,7 @@ class LecturerService
                 $q->where('staff_number', $user->staff_number)
                 // Can see co-supervisors of their students
                 ->orWhereHas('coSupervisors', function ($coSupQ) use ($user) {
+                    $coSupQ->where('lecturer_id', $user->lecturer->id);
                     $coSupQ->whereHas('student', function ($studQ) use ($user) {
                         $studQ->whereHas('mainSupervisor', function ($mainSupQ) use ($user) {
                             $mainSupQ->where('staff_number', $user->staff_number);
@@ -204,6 +205,7 @@ class LecturerService
                 $q->where('staff_number', $user->staff_number)
                 // Can see co-supervisors of their students
                 ->orWhereHas('coSupervisors', function ($coSupQ) use ($user) {
+                    $coSupQ->where('lecturer_id', $user->lecturer->id);
                     $coSupQ->whereHas('student', function ($studQ) use ($user) {
                         $studQ->whereHas('mainSupervisor', function ($mainSupQ) use ($user) {
                             $mainSupQ->where('staff_number', $user->staff_number);

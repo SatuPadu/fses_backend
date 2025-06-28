@@ -9,12 +9,76 @@ use App\Modules\Evaluation\Models\CoSupervisor;
 class StudentService
 {
     /**
+     * Calculate the current user's roles for a specific student.
+     *
+     * @param Student $student
+     * @param array $userRoles
+     * @return array
+     */
+    private function calculateUserRolesForStudent(Student $student, array $userRoles): array
+    {
+        $user = auth()->user();
+        $roles = [];
+
+        // Check if user is a Program Coordinator for this student's department
+        if (in_array('ProgramCoordinator', $userRoles) && $student->department === $user->department) {
+            $roles[] = 'ProgramCoordinator';
+        }
+
+        // Check if user is a Supervisor for this student
+        if (in_array('Supervisor', $userRoles) && $student->mainSupervisor && $student->mainSupervisor->staff_number === $user->staff_number) {
+            $roles[] = 'Supervisor';
+        }
+
+        // Check if user is a Co-Supervisor for this student
+        if (in_array('CoSupervisor', $userRoles)) {
+            $isCoSupervisor = $student->coSupervisors->some(function ($coSupervisor) use ($user) {
+                return $coSupervisor->lecturer_id === $user->lecturer->id;
+            });
+            if ($isCoSupervisor) {
+                $roles[] = 'CoSupervisor';
+            }
+        }
+
+        // Check if user is a Chairperson for this student
+        if (in_array('Chairperson', $userRoles)) {
+            $isChairperson = $student->evaluations->some(function ($evaluation) use ($user) {
+                return $evaluation->chairperson && $evaluation->chairperson->staff_number === $user->staff_number;
+            });
+            if ($isChairperson) {
+                $roles[] = 'Chairperson';
+            }
+        }
+
+        // Always check if user is an Examiner for this student and determine specific position
+        foreach ($student->evaluations as $evaluation) {
+            // Check if user is Examiner 1
+            if ($evaluation->examiner1 && $evaluation->examiner1->staff_number === $user->staff_number) {
+                $roles[] = 'Examiner 1';
+            }
+            // Check if user is Examiner 2
+            if ($evaluation->examiner2 && $evaluation->examiner2->staff_number === $user->staff_number) {
+                $roles[] = 'Examiner 2';
+            }
+            // Check if user is Examiner 3
+            if ($evaluation->examiner3 && $evaluation->examiner3->staff_number === $user->staff_number) {
+                $roles[] = 'Examiner 3';
+            }
+        }
+
+        return $roles;
+    }
+
+    /**
      * Retrieve paginated and optionally filtered list of students.
      *
      * Role-based filtering behavior:
      * - PGAM: Can view all students
-     * - PC (Program Coordinator): Can view only students from their department
-     * - RS (Research Supervisor): Can view only students they supervise
+     * - Office Assistant: Can view all students
+     * - PC (Program Coordinator): Can view students from their department
+     * - RS (Research Supervisor): Can view students they supervise
+     * - Chairperson: Can view students they're chairing
+     * - Users with multiple roles: Can view students accessible through any of their roles
      *
      * @param int $numPerPage
      * @param array $filters
@@ -22,7 +86,7 @@ class StudentService
      */
     public function getAllStudents(int $numPerPage, array $filters)
     {
-        $query = Student::with(['program', 'mainSupervisor', 'coSupervisors.lecturer']);
+        $query = Student::with(['program', 'mainSupervisor', 'evaluations', 'coSupervisors.lecturer']);
 
         // Apply filter by program if provided
         if (isset($filters['program'])) {
@@ -61,38 +125,78 @@ class StudentService
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
-        // Check if user has PGAM role (can see all data)
-        if (in_array('PGAM', $userRoles)) {
-            // PGAM can see all data - no additional filtering needed
-        }
-        // Check if user has Office Assistant role (can see all data)
-        elseif (in_array('OfficeAssistant', $userRoles)) {
-            // Office Assistant can see all data - no additional filtering needed
-        }
-        // Check if user is a Program Coordinator (can only see their department)
-        elseif (in_array('ProgramCoordinator', $userRoles)) {
-            $query->where('department', $user->department);
-        }
-        // Check if user is a Supervisor (can only see their supervised students)
-        elseif (in_array('Supervisor', $userRoles)) {
-            $query->whereHas('mainSupervisor', function ($q) use ($user) {
-                $q->where('staff_number', $user->staff_number);
-            });
-        }
-        // Check if user is a Chairperson (can only see students they're chairing)
-        elseif (in_array('Chairperson', $userRoles)) {
-            $query->whereHas('evaluations', function ($q) use ($user) {
-                $q->whereHas('chairperson', function ($cQ) use ($user) {
-                    $cQ->where('staff_number', $user->staff_number);
+        // Check if user has PGAM or Office Assistant role (can see all data)
+        if (in_array('PGAM', $userRoles) || in_array('OfficeAssistant', $userRoles)) {
+            // PGAM and Office Assistant can see all data - no additional filtering needed
+        } else {
+            // For users with other roles, apply role-based filtering with OR conditions
+            $query->where(function ($q) use ($user, $userRoles) {
+                $hasAccess = false;
+
+                // Check if user is a Program Coordinator (can see their department)
+                if (in_array('ProgramCoordinator', $userRoles)) {
+                    $q->orWhere('department', $user->department);
+                    $hasAccess = true;
+                }
+
+                // Check if user is a Supervisor (can see students they supervise)
+                if (in_array('Supervisor', $userRoles)) {
+                    $q->orWhereHas('mainSupervisor', function ($sq) use ($user) {
+                        $sq->where('staff_number', $user->staff_number);
+                    });
+                    $hasAccess = true;
+                }
+
+                // Check if user is a Co-Supervisor (can see students they co-supervise)
+                if (in_array('CoSupervisor', $userRoles)) {
+                    $q->orWhereHas('coSupervisors', function ($csq) use ($user) {
+                        $csq->where('lecturer_id', $user->lecturer->id);
+                    });
+                    $hasAccess = true;
+                }
+
+                // Check if user is a Chairperson (can see students they're chairing)
+                if (in_array('Chairperson', $userRoles)) {
+                    $q->orWhereHas('evaluations', function ($eq) use ($user) {
+                        $eq->whereHas('chairperson', function ($cq) use ($user) {
+                            $cq->where('staff_number', $user->staff_number);
+                        });
+                    });
+                    $hasAccess = true;
+                }
+
+                // Check if user is an Examiner (can see students they're examining)
+                $q->orWhereHas('evaluations', function ($eq) use ($user) {
+                    $eq->where(function ($exq) use ($user) {
+                        $exq->whereHas('examiner1', function ($e1q) use ($user) {
+                            $e1q->where('staff_number', $user->staff_number);
+                        })
+                        ->orWhereHas('examiner2', function ($e2q) use ($user) {
+                            $e2q->where('staff_number', $user->staff_number);
+                        })
+                        ->orWhereHas('examiner3', function ($e3q) use ($user) {
+                            $e3q->where('staff_number', $user->staff_number);
+                        });
+                    });
                 });
+                $hasAccess = true;
+
+                // If user has no relevant roles, return no results
+                if (!$hasAccess) {
+                    $q->whereRaw('1 = 0'); // This will return no results
+                }
             });
-        }
-        // Default: no access (empty result)
-        else {
-            $query->whereRaw('1 = 0'); // This will return no results
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+        $paginator = $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+
+        // Add user roles for each student
+        $paginator->getCollection()->transform(function ($student) use ($userRoles) {
+            $student->user_roles = $this->calculateUserRolesForStudent($student, $userRoles);
+            return $student;
+        });
+
+        return $paginator;
     }
 
     /**
@@ -159,43 +263,65 @@ class StudentService
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
-        // Check if user has PGAM role (can see all data)
-        if (in_array('PGAM', $userRoles)) {
+        // Check if user has PGAM or Office Assistant role (can see all data)
+        if (in_array('PGAM', $userRoles) || in_array('OfficeAssistant', $userRoles)) {
+            $student->user_roles = $this->calculateUserRolesForStudent($student, $userRoles);
             return $student;
         }
-        // Check if user has Office Assistant role (can see all data)
-        elseif (in_array('OfficeAssistant', $userRoles)) {
-            return $student;
-        }
-        // Check if user is a Program Coordinator (can only see their department)
-        elseif (in_array('ProgramCoordinator', $userRoles)) {
-            if ($student->department !== $user->department) {
-                throw new \Exception('Access denied. You can only view students from your department.');
+
+        // Check if user has access through any of their other roles
+        $hasAccess = false;
+
+        // Check if user is a Program Coordinator (can see their department)
+        if (in_array('ProgramCoordinator', $userRoles)) {
+            if ($student->department === $user->department) {
+                $hasAccess = true;
             }
-            return $student;
         }
-        // Check if user is a Supervisor (can only see their supervised students)
-        elseif (in_array('Supervisor', $userRoles)) {
-            if ($student->mainSupervisor->staff_number !== $user->staff_number) {
-                throw new \Exception('Access denied. You can only view students you supervise.');
+
+        // Check if user is a Supervisor (can see students they supervise)
+        if (in_array('Supervisor', $userRoles)) {
+            if ($student->mainSupervisor && $student->mainSupervisor->staff_number === $user->staff_number) {
+                $hasAccess = true;
             }
-            return $student;
         }
-        // Check if user is a Chairperson (can only see students they're chairing)
-        elseif (in_array('Chairperson', $userRoles)) {
+
+        // Check if user is a Co-Supervisor (can see students they co-supervise)
+        if (in_array('CoSupervisor', $userRoles)) {
+            $isCoSupervisor = $student->coSupervisors->some(function ($coSupervisor) use ($user) {
+                return $coSupervisor->lecturer_id === $user->lecturer->id;
+            });
+            if ($isCoSupervisor) {
+                $hasAccess = true;
+            }
+        }
+
+        // Check if user is a Chairperson (can see students they're chairing)
+        if (in_array('Chairperson', $userRoles)) {
             $isChairperson = $student->evaluations->some(function ($evaluation) use ($user) {
                 return $evaluation->chairperson && $evaluation->chairperson->staff_number === $user->staff_number;
             });
-            
-            if (!$isChairperson) {
-                throw new \Exception('Access denied. You can only view students you are chairing.');
+            if ($isChairperson) {
+                $hasAccess = true;
             }
+        }
+
+        // Check if user is an Examiner (can see students they're examining)
+        $isExaminer = $student->evaluations->some(function ($evaluation) use ($user) {
+            return ($evaluation->examiner1 && $evaluation->examiner1->staff_number === $user->staff_number) ||
+                   ($evaluation->examiner2 && $evaluation->examiner2->staff_number === $user->staff_number) ||
+                   ($evaluation->examiner3 && $evaluation->examiner3->staff_number === $user->staff_number);
+        });
+        if ($isExaminer) {
+            $hasAccess = true;
+        }
+
+        if ($hasAccess) {
+            $student->user_roles = $this->calculateUserRolesForStudent($student, $userRoles);
             return $student;
         }
-        // Default: no access
-        else {
-            throw new \Exception('Access denied. You do not have permission to view this student.');
-        }
+
+        throw new \Exception('Access denied. You do not have permission to view this student.');
     }
 
     /**

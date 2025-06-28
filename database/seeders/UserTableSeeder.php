@@ -20,7 +20,7 @@ class UserTableSeeder extends Seeder
         // Get departments from the Department enum
         $departments = Department::all();
         
-        // Create one user for each role, rotating through departments
+        // Create only the Office Assistant user
         $users = [
             [
                 'name' => 'Office Assistant',
@@ -28,33 +28,6 @@ class UserTableSeeder extends Seeder
                 'staff_number' => 'OA123456',
                 'department' => $departments[0] ?? 'SEAT',
                 'password' => Hash::make('OA123456'),
-                'is_active' => true,
-                'is_password_updated' => false,
-            ],
-            [
-                'name' => 'Supervisor',
-                'email' => 'supervisor@utm.com',
-                'staff_number' => 'SV654321',
-                'department' => $departments[1] ?? 'II',
-                'password' => Hash::make('SV654321'),
-                'is_active' => true,
-                'is_password_updated' => false,
-            ],
-            [
-                'name' => 'Program Coordinator',
-                'email' => 'coordinator@utm.com',
-                'staff_number' => 'PC678901',
-                'department' => $departments[2] ?? 'BIHG',
-                'password' => Hash::make('PC678901'),
-                'is_active' => true,
-                'is_password_updated' => false,
-            ],
-            [
-                'name' => 'PGAM Administrator',
-                'email' => 'pgam@utm.com',
-                'staff_number' => 'PG987654',
-                'department' => $departments[3] ?? 'CAI',
-                'password' => Hash::make('PG987654'),
                 'is_active' => true,
                 'is_password_updated' => false,
             ],
