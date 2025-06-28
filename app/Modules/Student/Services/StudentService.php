@@ -557,6 +557,10 @@ class StudentService
             throw new \Exception('Access denied. Only PGAM and Office Assistant can delete student records.');
         }
         
+        // Delete related records first to avoid foreign key constraint violations
+        $student->coSupervisors()->delete();
+        $student->evaluations()->delete();
+        
         return $student->delete();
     }
 }

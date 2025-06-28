@@ -635,6 +635,6 @@ class LecturerService
 
     public function getCoSupervisorsExcluding($supervisorId)
     {
-        return Lecturer::where('id', '!=', $supervisorId)->get();
+        return Lecturer::where('user_id', '!=', $supervisorId)->get();
     }
 }
