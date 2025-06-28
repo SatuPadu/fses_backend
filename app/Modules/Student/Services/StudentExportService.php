@@ -78,8 +78,8 @@ class StudentExportService
                     $hasAccess = true;
                 }
 
-                // Supervisor: students they supervise
-                if (in_array('Supervisor', $userRoles)) {
+                // Research Supervisor: students they supervise
+                if (in_array('ResearchSupervisor', $userRoles)) {
                     $q->orWhereHas('mainSupervisor', function ($sq) use ($user) {
                         $sq->where('staff_number', $user->staff_number);
                     });

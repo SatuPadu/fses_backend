@@ -237,7 +237,7 @@ trait PermissionHelper
     }
 
     /**
-     * Check if current user is Supervisor
+     * Check if current user is Research Supervisor
      */
     protected function isSupervisor(): bool
     {

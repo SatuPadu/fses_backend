@@ -8,7 +8,6 @@ use App\Modules\Program\Models\Program;
 use App\Modules\UserManagement\Models\Lecturer;
 use App\Modules\Auth\Models\User;
 use App\Modules\Evaluation\Models\Evaluation;
-use App\Modules\Evaluation\Models\Supervisor;
 use App\Modules\Evaluation\Models\Examiner;
 use App\Modules\Evaluation\Models\Chairperson;
 use App\Modules\Evaluation\Models\CoSupervisor;
@@ -34,7 +33,7 @@ class StudentExportTest extends TestCase
         $evaluation = Evaluation::factory()->create(['student_id' => $student->id]);
         
         $lecturer = Lecturer::factory()->create();
-        Supervisor::factory()->create([
+        CoSupervisor::factory()->create([
             'student_id' => $student->id,
             'lecturer_id' => $lecturer->id
         ]);

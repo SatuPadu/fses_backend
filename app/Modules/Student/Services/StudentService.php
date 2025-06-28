@@ -25,9 +25,9 @@ class StudentService
             $roles[] = 'ProgramCoordinator';
         }
 
-        // Check if user is a Supervisor for this student
-        if (in_array('Supervisor', $userRoles) && $student->mainSupervisor && $student->mainSupervisor->staff_number === $user->staff_number) {
-            $roles[] = 'Supervisor';
+        // Check if user is a Research Supervisor for this student
+        if (in_array('ResearchSupervisor', $userRoles) && $student->mainSupervisor && $student->mainSupervisor->staff_number === $user->staff_number) {
+            $roles[] = 'ResearchSupervisor';
         }
 
         // Check if user is a Co-Supervisor for this student
@@ -139,8 +139,8 @@ class StudentService
                     $hasAccess = true;
                 }
 
-                // Check if user is a Supervisor (can see students they supervise)
-                if (in_array('Supervisor', $userRoles)) {
+                // Check if user is a Research Supervisor (can see students they supervise)
+                if (in_array('ResearchSupervisor', $userRoles)) {
                     $q->orWhereHas('mainSupervisor', function ($sq) use ($user) {
                         $sq->where('staff_number', $user->staff_number);
                     });
@@ -279,8 +279,8 @@ class StudentService
             }
         }
 
-        // Check if user is a Supervisor (can see students they supervise)
-        if (in_array('Supervisor', $userRoles)) {
+        // Check if user is a Research Supervisor (can see students they supervise)
+        if (in_array('ResearchSupervisor', $userRoles)) {
             if ($student->mainSupervisor && $student->mainSupervisor->staff_number === $user->staff_number) {
                 $hasAccess = true;
             }

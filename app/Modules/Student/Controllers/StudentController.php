@@ -69,7 +69,7 @@ class StudentController extends Controller
             return $this->sendCreatedResponse($student, 'Student added successfully!');
         } catch (ModelNotFoundException $e) {
             return $this->sendError(
-                'Supervisor or co-supervisor not found',
+                'Research Supervisor or co-supervisor not found',
                 ['error' => 'One or more supervisors not found'],
                 Response::HTTP_NOT_FOUND
             );

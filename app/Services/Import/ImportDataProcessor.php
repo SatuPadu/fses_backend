@@ -39,7 +39,7 @@ class ImportDataProcessor
         $program = $this->createOrUpdateProgram($row, $result);
         $this->logProgramImport($program, $row, $result);
 
-        // 2. Create/Update Main Supervisor
+        // 2. Create/Update Research Supervisor
         $this->progressTracker->updateStepProgress("Processing main supervisor data for row {$rowNumber}...");
         $mainSupervisor = $this->createOrUpdateLecturer($row, 'main_supervisor', $rowNumber, $result);
         $this->logLecturerImport($mainSupervisor, 'main_supervisor', $row, $result);

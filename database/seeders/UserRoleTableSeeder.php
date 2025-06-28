@@ -24,7 +24,7 @@ class UserRoleTableSeeder extends Seeder
                 'email' => 'officeassistant@utm.com',
                 'role_name' => UserRole::OFFICE_ASSISTANT,
             ],
-            // Supervisor
+            // Research Supervisor
             [
                 'email' => 'supervisor@utm.com',
                 'role_name' => UserRole::SUPERVISOR,

@@ -56,8 +56,8 @@ class ProgramService
         elseif (in_array('ProgramCoordinator', $userRoles)) {
             $query->where('department', $user->department);
         }
-        // Check if user is a Supervisor (can only see programs of their supervised students)
-        elseif (in_array('Supervisor', $userRoles)) {
+        // Check if user is a Research Supervisor (can only see programs of their supervised students)
+        elseif (in_array('ResearchSupervisor', $userRoles)) {
             $query->whereHas('students', function ($q) use ($user) {
                 $q->whereHas('mainSupervisor', function ($q2) use ($user) {
                     $q2->where('staff_number', $user->staff_number);
