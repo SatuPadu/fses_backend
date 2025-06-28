@@ -146,6 +146,76 @@ class NominationController extends Controller
     /**
      * Display a listing of nominations.
      * 
+     * @OA\Get(
+     *     path="/api/evaluations/nominations",
+     *     summary="Get nominations list",
+     *     description="Retrieve a paginated list of nominations with optional filtering",
+     *     tags={"Evaluations"},
+     *     security={{"sanctumAuth":{}}},
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         required=false,
+     *         description="Number of items per page",
+     *         @OA\Schema(type="integer", default=10)
+     *     ),
+     *     @OA\Parameter(
+     *         name="student_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by student ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="nomination_status",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by nomination status",
+     *         @OA\Schema(type="string", enum={"pending", "nominated", "locked", "postponed"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="is_postponed",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by postponement status",
+     *         @OA\Schema(type="boolean")
+     *     ),
+     *     @OA\Parameter(
+     *         name="semester",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by semester",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="academic_year",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by academic year",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="chairperson_assigned",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by complete assignment status (true = all three examiners AND chairperson assigned, false = any examiner or chairperson missing)",
+     *         @OA\Schema(type="boolean")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Nominations retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object"),
+     *             @OA\Property(property="message", type="string", example="Nominations retrieved successfully!")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error"
+     *     )
+     * )
+     * 
      * @param \Illuminate\Http\Request $request
      * @return JsonResponse
      */

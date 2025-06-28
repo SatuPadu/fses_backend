@@ -299,6 +299,15 @@ class NominationService
             $query->where('academic_year', $filters['academic_year']);
         }
 
+        if (isset($filters['chairperson_assigned'])) {
+            if (filter_var($filters['chairperson_assigned'], FILTER_VALIDATE_BOOLEAN)) {
+                $query->whereNotNull('examiner1_id')
+                      ->whereNotNull('examiner2_id')
+                      ->whereNotNull('examiner3_id')
+                      ->whereNotNull('chairperson_id');
+            }
+        }
+
         // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();

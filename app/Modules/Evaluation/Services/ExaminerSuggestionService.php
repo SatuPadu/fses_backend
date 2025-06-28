@@ -69,10 +69,11 @@ class ExaminerSuggestionService
      * Get suggestions for Examiner 2
      *
      * @param int $studentId
+     * @param int|null $examiner1Id Currently selected Examiner 1 ID
      * @return \Illuminate\Database\Eloquent\Collection
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
-    public function getExaminer2Suggestions(int $studentId)
+    public function getExaminer2Suggestions(int $studentId, ?int $examiner1Id = null)
     {
         $student = Student::with(['mainSupervisor'])->findOrFail($studentId);
         
@@ -92,6 +93,14 @@ class ExaminerSuggestionService
             LecturerTitle::PROFESSOR_MADYA, 
             LecturerTitle::DR
         ]);
+        
+        // Exclude currently selected examiners (Examiner 1 should not appear in Examiner 2's list)
+        $excludeIds = [];
+        if ($examiner1Id) $excludeIds[] = $examiner1Id;
+        
+        if (!empty($excludeIds)) {
+            $query->whereNotIn('id', $excludeIds);
+        }
         
         // Exclude lecturers who are already examiners for this student
         $query->whereNotIn('id', function($subQuery) use ($studentId) {
@@ -120,10 +129,12 @@ class ExaminerSuggestionService
      * Get suggestions for Examiner 3
      *
      * @param int $studentId
+     * @param int|null $examiner1Id Currently selected Examiner 1 ID
+     * @param int|null $examiner2Id Currently selected Examiner 2 ID
      * @return \Illuminate\Database\Eloquent\Collection
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
-    public function getExaminer3Suggestions(int $studentId)
+    public function getExaminer3Suggestions(int $studentId, ?int $examiner1Id = null, ?int $examiner2Id = null)
     {
         $student = Student::with(['mainSupervisor'])->findOrFail($studentId);
         
@@ -143,6 +154,15 @@ class ExaminerSuggestionService
             LecturerTitle::PROFESSOR_MADYA, 
             LecturerTitle::DR
         ]);
+        
+        // Exclude currently selected examiners (Examiners 1 and 2 should not appear in Examiner 3's list)
+        $excludeIds = [];
+        if ($examiner1Id) $excludeIds[] = $examiner1Id;
+        if ($examiner2Id) $excludeIds[] = $examiner2Id;
+        
+        if (!empty($excludeIds)) {
+            $query->whereNotIn('id', $excludeIds);
+        }
         
         // Exclude lecturers who are already examiners for this student
         $query->whereNotIn('id', function($subQuery) use ($studentId) {

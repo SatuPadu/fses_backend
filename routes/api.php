@@ -120,9 +120,9 @@ Route::prefix('evaluations')->middleware(['jwt.verify', 'password.updated', 'per
     Route::prefix('nominations')->group(function () {
         Route::get('/', [NominationController::class, 'index']);
         Route::post('/', [NominationController::class, 'store'])->middleware('role:ResearchSupervisor');
+        Route::post('/lock', [NominationController::class, 'lockNominations'])->middleware('role:ProgramCoordinator');
         Route::put('/{id}', [NominationController::class, 'update'])->middleware('role:ResearchSupervisor');
         Route::post('/{id}/postpone', [NominationController::class, 'postpone'])->middleware('role:ResearchSupervisor');
-        Route::post('/lock', [NominationController::class, 'lockNominations'])->middleware('role:ProgramCoordinator');
     });
 
     // Assignment routes (Program Coordinator, PGAM)
