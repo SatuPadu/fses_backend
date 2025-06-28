@@ -29,4 +29,12 @@ class Lecturer extends Model
     {
         return $this->hasOne(User::class, 'staff_number', 'staff_number');
     }
+
+    /**
+     * Get evaluations where this lecturer is the chairperson.
+     */
+    public function chairedEvaluations()
+    {
+        return $this->hasMany(\App\Modules\Evaluation\Models\Evaluation::class, 'chairperson_id');
+    }
 }

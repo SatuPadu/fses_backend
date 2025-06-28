@@ -110,97 +110,79 @@ class AssignmentService
     }
 
     /**
-     * Lock an evaluation nomination with user and time context.
-     * 
-     * @param int $id
-     * @throws \Exception
-     * @return Evaluation|Evaluation[]|\Illuminate\Database\Eloquent\Collection|\Illuminate\Database\Eloquent\Model
+     * Get eligible chairpersons for a given evaluation, following FSES constraints.
+     *
+     * @param int $evaluationId
+     * @return \Illuminate\Database\Eloquent\Collection
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
-    public function lock(int $id): Evaluation
+    public function getEligibleChairpersons($evaluationId)
     {
-        try {
-            DB::beginTransaction();
+        $evaluation = Evaluation::with(['student.mainSupervisor', 'examiner1', 'examiner2', 'examiner3', 'student'])->findOrFail($evaluationId);
 
-            $evaluation = Evaluation::findOrFail($id);
-            $evaluation->locked_by = Auth::id();
-            $evaluation->locked_at = now();
-            $evaluation->nomination_status = NominationStatus::LOCKED;
-            $evaluation->save();
+        $mainSupervisor = $evaluation->student->mainSupervisor;
+        $examiners = [
+            $evaluation->examiner1,
+            $evaluation->examiner2,
+            $evaluation->examiner3,
+        ];
 
-            DB::commit();
-            return $evaluation;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw new \Exception('Nomination lock unsuccessful!');
+        // Exclude supervisor and examiners from eligible chairpersons
+        $excludeIds = array_filter([
+            $mainSupervisor ? $mainSupervisor->id : null,
+            $evaluation->examiner1_id,
+            $evaluation->examiner2_id,
+            $evaluation->examiner3_id,
+        ]);
+
+        // Only FAI lecturers
+        $query = Lecturer::where('is_from_fai', true)
+            ->whereNotIn('id', $excludeIds);
+
+        // If main supervisor or any examiner is a Professor, chairperson must be a Professor
+        $professorRequired = ($mainSupervisor && $mainSupervisor->title === LecturerTitle::PROFESSOR)
+            || collect($examiners)->contains(fn($e) => $e && $e->title === LecturerTitle::PROFESSOR);
+
+        if ($professorRequired) {
+            $query->where('title', LecturerTitle::PROFESSOR);
+        } else {
+            $query->whereIn('title', [LecturerTitle::PROFESSOR, LecturerTitle::PROFESSOR_MADYA]);
         }
+
+        // Chairperson can only chair at most 4 sessions per semester, per department
+        $semester = $evaluation->semester;
+        $department = $evaluation->student->department;
+
+        $query->whereDoesntHave('chairedEvaluations', function ($q) use ($semester, $department) {
+            $q->where('semester', $semester)
+              ->whereHas('student', function ($sq) use ($department) {
+                  $sq->where('department', $department);
+              })
+              ->groupBy('chairperson_id')
+              ->havingRaw('COUNT(*) >= 4');
+        });
+
+        return $query->orderBy('name')->get();
     }
 
     /**
-     * Retrieve paginated and optionally filtered list of assignments.
+     * Get all eligible chairpersons for future evaluations (no evaluation context).
      *
-     * @param int $numPerPage
-     * @param array $filters
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getAssignments(int $numPerPage, array $filters)
+    public function chairpersonSuggestions()
     {
-        $query = Evaluation::with(['student', 'chairperson'])
-            ->whereNotNull('chairperson_id');
+        $query = Lecturer::where('is_from_fai', true)
+            ->whereIn('title', [LecturerTitle::PROFESSOR, LecturerTitle::PROFESSOR_MADYA]);
 
-        // Apply filters
-        if (isset($filters['student_id'])) {
-            $query->where('student_id', $filters['student_id']);
-        }
+        // Exclude those who have already chaired 4 or more sessions in any semester/department
+        $query->whereDoesntHave('chairedEvaluations', function ($q) {
+            $q->select('chairperson_id')
+              ->join('students', 'student_evaluations.student_id', '=', 'students.id')
+              ->groupBy('chairperson_id', 'semester', 'students.department')
+              ->havingRaw('COUNT(*) >= 4');
+        });
 
-        if (isset($filters['chairperson_id'])) {
-            $query->where('chairperson_id', $filters['chairperson_id']);
-        }
-
-        if (isset($filters['semester'])) {
-            $query->where('semester', $filters['semester']);
-        }
-
-        if (isset($filters['academic_year'])) {
-            $query->where('academic_year', $filters['academic_year']);
-        }
-
-        if (isset($filters['is_auto_assigned'])) {
-            $query->where('is_auto_assigned', $filters['is_auto_assigned']);
-        }
-
-        // Apply role-based filtering
-        $user = auth()->user();
-        $userRoles = $user->roles->pluck('role_name')->toArray();
-
-        if (in_array('PGAM', $userRoles)) {
-        }
-        elseif (in_array('OfficeAssistant', $userRoles)) {
-        }
-        // Check if user is a Program Coordinator (can only see assignments from their department) 
-        elseif (in_array('ProgramCoordinator', $userRoles)) {
-            $query->whereHas('student', function ($q) use ($user) {
-                $q->where('department', $user->department);
-            });
-        }
-        // Check if user is a Research Supervisor (can only see assignments of their students)
-        elseif (in_array('ResearchSupervisor', $userRoles)) {
-            $query->whereHas('student', function ($q) use ($user) {
-                $q->whereHas('mainSupervisor', function ($q2) use ($user) {
-                    $q2->where('staff_number', $user->staff_number);
-                });
-            });
-        }
-        // Check if user is a Chairperson (can only see students they're chairing)
-        elseif (in_array('Chairperson', $userRoles)) {
-            $query->whereHas('chairperson', function ($cQ) use ($user) {
-                $cQ->where('staff_number', $user->staff_number);
-            });
-        }
-        // Default: no access (empty result)
-        else {
-            $query->whereRaw('1 = 0'); // This will return no results
-        }
-
-        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+        return $query->orderBy('name')->get();
     }
 }
