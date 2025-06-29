@@ -6,8 +6,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Enums\LecturerTitle;
 use App\Enums\NominationStatus;
+use App\Enums\UserRole;
 use App\Modules\Evaluation\Models\Evaluation;
 use App\Modules\UserManagement\Models\Lecturer;
+use App\Modules\UserManagement\Models\Role;
+use App\Modules\Auth\Models\User;
 
 /**
  * Service class for handling business logic related to the Program Coordinator role.
@@ -79,6 +82,39 @@ class AssignmentService
     }
 
     /**
+     * Assign CHAIRPERSON role to user if not already assigned
+     * 
+     * @param int $chairpersonId
+     * @return void
+     */
+    private function assignChairpersonRole(int $chairpersonId): void
+    {
+        // Find the lecturer
+        $lecturer = Lecturer::find($chairpersonId);
+        if (!$lecturer) {
+            return;
+        }
+
+        // Find the user associated with this lecturer
+        $user = User::where('staff_number', $lecturer->staff_number)->first();
+        if (!$user) {
+            return;
+        }
+
+        // Get CHAIRPERSON role
+        $chairpersonRole = Role::findByName(UserRole::CHAIRPERSON);
+        if (!$chairpersonRole) {
+            return;
+        }
+
+        // Check if user already has CHAIRPERSON role
+        if (!$user->hasRole(UserRole::CHAIRPERSON)) {
+            // Assign CHAIRPERSON role to user
+            $user->roles()->attach($chairpersonRole->id);
+        }
+    }
+
+    /**
      * Update an existing evaluation record.
      * 
      * @param array $assignment_list
@@ -98,6 +134,9 @@ class AssignmentService
                 $evaluation->chairperson_id = $assignment['chairperson_id'];
                 $evaluation->is_auto_assigned = $assignment['is_auto_assigned'];
                 $evaluation->save();
+
+                // Assign CHAIRPERSON role to the assigned chairperson
+                $this->assignChairpersonRole($assignment['chairperson_id']);
             }
 
             DB::commit();

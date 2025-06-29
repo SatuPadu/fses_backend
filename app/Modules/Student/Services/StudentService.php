@@ -413,7 +413,7 @@ class StudentService
      */
     public function getStudentById(int $id): Student
     {
-        $student = Student::with(['program', 'mainSupervisor', 'evaluations', 'coSupervisors.lecturer'])->findOrFail($id);
+        $student = Student::with(['program', 'mainSupervisor', 'evaluations', 'coSupervisors.lecturer', 'evaluations.examiner1', 'evaluations.examiner2', 'evaluations.examiner3', 'evaluations.chairperson'])->findOrFail($id);
         
         // Apply role-based access control
         $user = auth()->user();

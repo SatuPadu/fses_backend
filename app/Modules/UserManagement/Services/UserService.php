@@ -4,7 +4,9 @@ namespace App\Modules\UserManagement\Services;
 
 use Illuminate\Support\Facades\DB;
 use App\Enums\Department;
+use App\Enums\UserRole;
 use App\Modules\Auth\Models\User;
+use App\Modules\UserManagement\Models\Role;
 use Exception;
 use Illuminate\Support\Facades\Hash;
 use App\Modules\UserManagement\Models\Lecturer;
@@ -135,6 +137,21 @@ class UserService
     }
 
     /**
+     * Assign role to user
+     * 
+     * @param User $user
+     * @param string $roleName
+     * @return void
+     */
+    private function assignRoleToUser(User $user, string $roleName): void
+    {
+        $role = Role::findByName($roleName);
+        if ($role) {
+            $user->roles()->attach($role->id);
+        }
+    }
+
+    /**
      * Adds new User model into the database.
      * 
      * @param array $request
@@ -152,28 +169,36 @@ class UserService
                 'staff_number' => $request['staff_number'],
                 'name' => $request['name'],
                 'email' => $request['email'],
-                'password' => Hash::make( $request['staff_number']),
+                'password' => Hash::make($request['staff_number']),
                 'department' => $request['department'],
             ]);
 
-            // Create corresponding lecturer entry
-            $lecturer = Lecturer::create([
-                'name' => $request['name'],
-                'email' => $request['email'],
-                'staff_number' => $request['staff_number'],
-                'phone' => $request['phone'],
-                'department' => $request['department'],
-                'title' => $request['title'],
-                'is_from_fai' => !($request['department'] == Department::OTHER),
-                'external_institution' => $request['external_institution'],
-                'specialization' => $request['specialization'],
-            ]);
+            // Assign role to user
+            $this->assignRoleToUser($user, $request['role']);
 
-            // Link lecturer and user entries
-            $user->lecturer_id = $lecturer->id;
-            $user->save();
-            $lecturer->user_id = $user->id;
-            $lecturer->save();
+            // Only create lecturer entry if not Office Assistant and department is not OTHER
+            $shouldCreateLecturer = $request['role'] !== UserRole::OFFICE_ASSISTANT && $request['department'] !== Department::OTHER;
+            
+            if ($shouldCreateLecturer) {
+                // Create corresponding lecturer entry
+                $lecturer = Lecturer::create([
+                    'name' => $request['name'],
+                    'email' => $request['email'],
+                    'staff_number' => $request['staff_number'],
+                    'phone' => $request['phone'],
+                    'department' => $request['department'],
+                    'title' => $request['title'],
+                    'is_from_fai' => $request['department'] !== Department::OTHER,
+                    'external_institution' => $request['department'] === Department::OTHER ? 'External Institution' : null,
+                    'specialization' => $request['specialization'],
+                ]);
+
+                // Link lecturer and user entries
+                $user->lecturer_id = $lecturer->id;
+                $user->save();
+                $lecturer->user_id = $user->id;
+                $lecturer->save();
+            }
 
             // Commit changes to database and return user instance
             DB::commit();
@@ -203,7 +228,7 @@ class UserService
             // Find user in database
             $user = User::find($id);
             if (!$user) {
-                throw new Exception('Lecturer not found', 404);
+                throw new Exception('User not found', 404);
             }
             
             // Update user info
@@ -212,20 +237,65 @@ class UserService
             $user->email = $request['email'];
             $user->save();
 
-            // Update corresponding lecturer entry info
-            if(isset($user->lecturer_id)) {
-                $lecturer = Lecturer::find($user->lecturer_id);
-                
-                $lecturer->name = $request['name'];
-                $lecturer->email = $request['email'];
-                $lecturer->department = $request['department'];
-                $lecturer->is_from_fai = !($request['department'] == Department::OTHER);
-                $lecturer->title = $request['title'];
-                $lecturer->phone = $request['phone'];
-                $lecturer->external_institution = $request['external_institution'];
-                $lecturer->specialization = $request['specialization'];
+            // Update role if changed
+            $currentRole = $user->roles()->first();
+            if (!$currentRole || $currentRole->role_name !== $request['role']) {
+                // Remove current role
+                if ($currentRole) {
+                    $user->roles()->detach($currentRole->id);
+                }
+                // Assign new role
+                $this->assignRoleToUser($user, $request['role']);
+            }
 
-                $lecturer->save();
+            // Handle lecturer entry based on role and department
+            $shouldHaveLecturer = $request['role'] !== UserRole::OFFICE_ASSISTANT && $request['department'] !== Department::OTHER;
+            
+            if ($shouldHaveLecturer) {
+                // Update or create lecturer entry
+                if (isset($user->lecturer_id)) {
+                    $lecturer = Lecturer::find($user->lecturer_id);
+                    if ($lecturer) {
+                        $lecturer->name = $request['name'];
+                        $lecturer->email = $request['email'];
+                        $lecturer->department = $request['department'];
+                        $lecturer->is_from_fai = $request['department'] !== Department::OTHER;
+                        $lecturer->title = $request['title'];
+                        $lecturer->phone = $request['phone'];
+                        $lecturer->external_institution = $request['department'] === Department::OTHER ? 'External Institution' : null;
+                        $lecturer->specialization = $request['specialization'];
+                        $lecturer->save();
+                    }
+                } else {
+                    // Create new lecturer entry
+                    $lecturer = Lecturer::create([
+                        'name' => $request['name'],
+                        'email' => $request['email'],
+                        'staff_number' => $request['staff_number'],
+                        'phone' => $request['phone'],
+                        'department' => $request['department'],
+                        'title' => $request['title'],
+                        'is_from_fai' => $request['department'] !== Department::OTHER,
+                        'external_institution' => $request['department'] === Department::OTHER ? 'External Institution' : null,
+                        'specialization' => $request['specialization'],
+                    ]);
+
+                    // Link lecturer and user entries
+                    $user->lecturer_id = $lecturer->id;
+                    $user->save();
+                    $lecturer->user_id = $user->id;
+                    $lecturer->save();
+                }
+            } else {
+                // Remove lecturer entry if exists
+                if (isset($user->lecturer_id)) {
+                    $lecturer = Lecturer::find($user->lecturer_id);
+                    if ($lecturer) {
+                        $lecturer->delete();
+                    }
+                    $user->lecturer_id = null;
+                    $user->save();
+                }
             }
 
             // Commit changes to database and return user instance
