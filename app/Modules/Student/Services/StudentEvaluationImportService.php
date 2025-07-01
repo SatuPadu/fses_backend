@@ -175,24 +175,32 @@ class StudentEvaluationImportService
             } else {
                 // Validate semester for program type using the mapped enum value
                 $semester = (int)($row['current_semester'] ?? 0);
-                
-                if ($semester > 0) {
-                    switch ($enumProgramName) {
-                        case ProgramName::MPHIL:
-                            if ($semester != 2) {
-                                $errors[] = "Master of Philosophy students must be in semester 2 for evaluation, found semester {$semester}";
+                $programMapping = [
+                    ProgramName::PHD => ['evaluation_semester' => [3], 'total_semesters' => 16],
+                    ProgramName::MPHIL => ['evaluation_semester' => [2], 'total_semesters' => 8],
+                    ProgramName::DSE => ['evaluation_semester' => [3, 5], 'total_semesters' => 16],
+                ];
+                if (isset($programMapping[$enumProgramName])) {
+                    $evalSemArr = $programMapping[$enumProgramName]['evaluation_semester'];
+                    $totalSem = $programMapping[$enumProgramName]['total_semesters'];
+                    $isReEvaluation = ($row['evaluation_type'] ?? null) === 'ReEvaluation';
+                    if ($semester > 0) {
+                        if ($isReEvaluation) {
+                            $maxEvalSem = is_array($evalSemArr) ? max($evalSemArr) : $evalSemArr;
+                            if ($semester <= $maxEvalSem || $semester > $totalSem) {
+                                $errors[] = "For Re-Evaluation, {$trimmedProgramName} students must be in semester greater than {$maxEvalSem} and up to {$totalSem}, found semester {$semester}";
                             }
-                            break;
-                        case ProgramName::PHD:
-                            if ($semester != 2) {
-                                $errors[] = "Doctor of Philosophy students must be in semester 2 for evaluation, found semester {$semester}";
+                        } else {
+                            if (is_array($evalSemArr)) {
+                                if (!in_array($semester, $evalSemArr)) {
+                                    $errors[] = "The allowed semesters for first evaluation for {$trimmedProgramName} students are: " . implode(', ', $evalSemArr) . ", found semester {$semester}";
+                                }
+                            } else {
+                                if ($semester != $evalSemArr) {
+                                    $errors[] = "The allowed semester for first evaluation for {$trimmedProgramName} students is {$evalSemArr}, found semester {$semester}";
+                                }
                             }
-                            break;
-                        case ProgramName::DSE:
-                            if ($semester < 6 || $semester > 8) {
-                                $errors[] = "Doctor of Software Engineering students must be in semester 6-8 for evaluation, found semester {$semester}";
-                            }
-                            break;
+                        }
                     }
                 }
             }
@@ -210,18 +218,18 @@ class StudentEvaluationImportService
         return [
             'Doctor of Philosophy' => [
                 'code' => 'PhD',
-                'total_semesters' => 6,
-                'evaluation_semester' => 2
+                'total_semesters' => 16,
+                'evaluation_semester' => [3]
             ],
             'Master of Philosophy' => [
                 'code' => 'MPhil',
-                'total_semesters' => 4,
-                'evaluation_semester' => 2
+                'total_semesters' => 8,
+                'evaluation_semester' => [2]
             ],
             'Doctor of Software Engineering' => [
                 'code' => 'DSE',
-                'total_semesters' => 8,
-                'evaluation_semester' => 6
+                'total_semesters' => 16,
+                'evaluation_semester' => [3, 5]
             ]
         ];
     }

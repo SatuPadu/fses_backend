@@ -33,8 +33,26 @@ class Lecturer extends Model
     /**
      * Get evaluations where this lecturer is the chairperson.
      */
+    public function chairpersonEvaluations()
+    {
+        return $this->hasMany(\App\Modules\Evaluation\Models\Evaluation::class, 'chairperson_id');
+    }
+
+    /**
+     * Get evaluations where this lecturer is the chairperson (alias for chairpersonEvaluations).
+     */
     public function chairedEvaluations()
     {
         return $this->hasMany(\App\Modules\Evaluation\Models\Evaluation::class, 'chairperson_id');
+    }
+
+    /**
+     * Get evaluations where this lecturer is an examiner (examiner1, examiner2, or examiner3).
+     */
+    public function examinerEvaluations()
+    {
+        return $this->hasMany(\App\Modules\Evaluation\Models\Evaluation::class, 'examiner1_id')
+            ->orWhere('examiner2_id', $this->id)
+            ->orWhere('examiner3_id', $this->id);
     }
 }

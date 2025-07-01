@@ -77,7 +77,7 @@ class AuthController extends Controller
     public function user(): JsonResponse
     {
         try {
-            $user = Auth::user();
+            $user = Auth::user()->load('lecturer');
             
             // Load any relationships if needed
             // $user->load('roles');

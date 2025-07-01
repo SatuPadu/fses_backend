@@ -82,7 +82,7 @@ class StudentService
      *
      * @param int $numPerPage
      * @param array $filters
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator|array
      */
     public function getAllStudents(int $numPerPage, array $filters)
     {
@@ -343,13 +343,42 @@ class StudentService
             }
         }
 
-        $paginator = $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+        $query->orderBy('created_at', 'desc');
 
-        // Add user roles for each student
-        $paginator->getCollection()->transform(function ($student) use ($userRoles) {
+        // Check if all=true parameter is present or if numPerPage is -1 (return all items)
+        if ((isset($filters['all']) && $filters['all'] === 'true') || $numPerPage === -1) {
+            /** @var \Illuminate\Database\Eloquent\Collection<int, Student> $items */
+            $items = $query->get();
+            $count = $items->count();
+            
+            // Add user roles for each student
+            $items->each(function (Student $student) use ($userRoles) {
+                $student->user_roles = $this->calculateUserRolesForStudent($student, $userRoles);
+            });
+            
+            return [
+                'items' => $items,
+                'pagination' => [
+                    'total' => $count,
+                    'per_page' => $count,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'from' => $count > 0 ? 1 : null,
+                    'to' => $count > 0 ? $count : null,
+                ]
+            ];
+        }
+
+        // Ensure numPerPage is at least 1 for pagination
+        $perPage = max(1, $numPerPage);
+        $paginator = $query->paginate($perPage);
+
+        // Add user roles for each student with explicit type casting
+        foreach ($paginator->items() as $item) {
+            /** @var Student $student */
+            $student = $item;
             $student->user_roles = $this->calculateUserRolesForStudent($student, $userRoles);
-            return $student;
-        });
+        }
 
         return $paginator;
     }

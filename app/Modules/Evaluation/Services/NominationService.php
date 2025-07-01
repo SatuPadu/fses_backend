@@ -91,7 +91,7 @@ class NominationService
         // Update student's research title if provided
         if (isset($request['research_title'])) {
             $student = Student::find($request['student_id']);
-            $student->update(['research_title' => $request['research_title']]);
+            $student->update(['research_title' => $request['research_title'], 'evaluation_type' => $request['evaluation_type']]);
         }
 
         $evaluation = Evaluation::create([
@@ -128,7 +128,7 @@ class NominationService
         // Update student's research title if provided
         if (isset($request['research_title'])) {
             $student = Student::find($evaluation->student_id);
-            $student->update(['research_title' => $request['research_title']]);
+            $student->update(['research_title' => $request['research_title'], 'evaluation_type' => $request['evaluation_type']]);
         }
 
         $evaluation->semester = $request['semester'] ?? $evaluation->semester;
@@ -345,15 +345,40 @@ class NominationService
             }
         }
 
-        // Filter by department specific if requested
-        $user = auth()->user();
-        if (isset($filters['department_specific']) && filter_var($filters['department_specific'], FILTER_VALIDATE_BOOLEAN)) {
-            $query->whereHas('student', function ($studentQ) use ($user) {
-                $studentQ->where('department', $user->department);
+        // Filter by lock status
+        if (isset($filters['locked'])) {
+            if (filter_var($filters['locked'], FILTER_VALIDATE_BOOLEAN)) {
+                // Only locked nominations
+                $query->where('nomination_status', NominationStatus::LOCKED);
+            } else {
+                // Only unlocked nominations
+                $query->where('nomination_status', '!=', NominationStatus::LOCKED);
+            }
+        }
+
+        // Filter by department
+        if (isset($filters['department'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('department', $filters['department']);
+            });
+        }
+
+        // Filter by program_id
+        if (isset($filters['program_id'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('program_id', $filters['program_id']);
+            });
+        }
+
+        // Filter by evaluation_type
+        if (isset($filters['evaluation_type'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('evaluation_type', $filters['evaluation_type']);
             });
         }
 
         // Apply role-based filtering
+        $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
         // Check if user has any of the relevant roles
@@ -404,7 +429,28 @@ class NominationService
             });
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+        $query->orderBy('created_at', 'desc');
+
+        // Check if all=true parameter is present or if numPerPage is -1 (return all items)
+        if ((isset($filters['all']) && $filters['all'] === 'true') || $numPerPage <= 0) {
+            $items = $query->get();
+            $count = $items->count();
+            return [
+                'items' => $items,
+                'pagination' => [
+                    'total' => $count,
+                    'per_page' => $count,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'from' => $count > 0 ? 1 : null,
+                    'to' => $count > 0 ? $count : null,
+                ]
+            ];
+        }
+
+        // Ensure numPerPage is at least 1 for pagination
+        $perPage = max(1, $numPerPage);
+        return $query->paginate($perPage);
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Modules\Student\Controllers\StudentEvaluationImportController;
 use App\Modules\Evaluation\Controllers\ExaminerSuggestionController;
 use App\Modules\Program\Controllers\ProgramController;
 use App\Modules\Student\Controllers\StudentExportController;
+use App\Modules\Evaluation\Controllers\EvaluationSummaryController;
 
 // API Health Check
 Route::get('/status', function () {
@@ -140,15 +141,13 @@ Route::prefix('examiner-suggestions')->middleware(['jwt.verify', 'password.updat
 });
 
 // Reports Routes (Program Coordinator, PGAM)
-Route::prefix('reports')->middleware(['jwt.verify', 'password.updated', 'permission:reports,view'])->group(function () {
-    Route::get('/statistics', function () {
-        // Reports controller will be implemented
-        return response()->json(['message' => 'Reports endpoint']);
-    });
-    Route::get('/download', function () {
-        // Download reports
-        return response()->json(['message' => 'Download reports endpoint']);
-    })->middleware('permission:reports,download');
+Route::prefix('reports')->group(function () {
+    Route::get('unique-examiners', [EvaluationSummaryController::class, 'uniqueExaminers']);
+    Route::get('examiner-sessions', [EvaluationSummaryController::class, 'examinerSessions']);
+    Route::get('unique-chairpersons', [EvaluationSummaryController::class, 'uniqueChairpersons']);
+    Route::get('chairperson-sessions', [EvaluationSummaryController::class, 'chairpersonSessions']);
+    Route::get('chart-data', [EvaluationSummaryController::class, 'evaluationChartData']);
+    Route::get('evaluation-summary', [EvaluationSummaryController::class, 'evaluationSummaryByProgramSemesterType']);
 });
 
 // Settings Routes (PGAM only)

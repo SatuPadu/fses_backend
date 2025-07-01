@@ -104,17 +104,12 @@ class ImportDataProcessor
     protected function createOrUpdateProgram($row, &$result)
     {
         $programName = trim($row['program_name']);
-        
-        // Map full program names to enum values for validation
         $programNameMapping = [
             'Doctor of Philosophy' => ProgramName::PHD,
             'Master of Philosophy' => ProgramName::MPHIL,
             'Doctor of Software Engineering' => ProgramName::DSE
         ];
-        
         $enumProgramName = $programNameMapping[$programName] ?? $programName;
-        
-        // Check if the mapped value is valid
         if (!ProgramName::isValid($enumProgramName)) {
             \Illuminate\Support\Facades\Log::error("Invalid program name in ImportDataProcessor", [
                 'original' => $row['program_name'],
@@ -124,23 +119,19 @@ class ImportDataProcessor
             ]);
             return null;
         }
-        
         if (!Department::isValid($row['student_department'])) {
             return null;
         }
-        
         $programData = [
-            'program_name' => $programName, // Store the full program name
-            'program_code' => $this->generateProgramCode($programName), // Use original name for code generation
+            'program_name' => $programName,
+            'program_code' => $this->generateProgramCode($programName),
             'department' => $row['student_department'],
             'total_semesters' => $this->getTotalSemesters($programName),
             'evaluation_semester' => $this->getEvaluationSemester($programName)
         ];
-        
         $existingProgram = Program::where('program_name', $programName)
             ->where('department', $row['student_department'])
             ->first();
-            
         if ($existingProgram) {
             $existingProgram->update($programData);
             $result['programs_updated']++;
@@ -518,22 +509,20 @@ class ImportDataProcessor
     protected function getTotalSemesters($programName)
     {
         $mapping = [
-            'Doctor of Philosophy' => 6,
-            'Master of Philosophy' => 4,
-            'Doctor of Software Engineering' => 8
+            'Doctor of Philosophy' => 16,
+            'Master of Philosophy' => 8,
+            'Doctor of Software Engineering' => 16
         ];
-
         return $mapping[$programName] ?? 4;
     }
 
     protected function getEvaluationSemester($programName)
     {
         $mapping = [
-            'Doctor of Philosophy' => 2,
+            'Doctor of Philosophy' => 3,
             'Master of Philosophy' => 2,
-            'Doctor of Software Engineering' => 6
+            'Doctor of Software Engineering' => 3,
         ];
-
         return $mapping[$programName] ?? 2;
     }
 }

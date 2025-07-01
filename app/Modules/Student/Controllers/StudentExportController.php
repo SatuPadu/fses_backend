@@ -41,6 +41,12 @@ class StudentExportController extends Controller
             if (!$this->userCan('students', 'export')) {
                 return $this->sendError('Access denied. Insufficient permissions for export.', [], 403);
             }
+            // Only PGAM and Program Coordinator can export
+            $user = auth()->user();
+            $userRoles = $user->roles->pluck('role_name')->toArray();
+            if (!(in_array('PGAM', $userRoles) || in_array('ProgramCoordinator', $userRoles))) {
+                return $this->sendError('Access denied. Only PGAM and Program Coordinator can export.', [], 403);
+            }
 
             $result = $this->exportService->exportStudentData(
                 $validated['columns'],

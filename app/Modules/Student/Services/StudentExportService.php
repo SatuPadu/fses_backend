@@ -30,11 +30,11 @@ class StudentExportService
             switch ($format) {
                 case 'excel':
                 case 'xlsx':
-                    return $this->exportToExcel($transformedData, $columns);
+                    return $this->exportToExcel($transformedData, $columns, $filters);
                 case 'csv':
-                    return $this->exportToCsv($transformedData, $columns);
+                    return $this->exportToCsv($transformedData, $columns, $filters);
                 case 'pptx':
-                    return $this->exportToPptx($transformedData, $columns);
+                    return $this->exportToPptx($transformedData, $columns, $filters);
                 default:
                     return ['success' => false, 'message' => 'Unsupported format'];
             }
@@ -61,108 +61,31 @@ class StudentExportService
             'coSupervisors.lecturer.user'
         ]);
 
-        // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
-        // PGAM and Office Assistant can see all data
-        if (in_array('PGAM', $userRoles) || in_array('OfficeAssistant', $userRoles)) {
-            // No additional filtering needed
-        } else {
-            $query->where(function ($q) use ($user, $userRoles) {
-                $hasAccess = false;
-
-                // Program Coordinator: students from their department
-                if (in_array('ProgramCoordinator', $userRoles)) {
-                    $q->orWhere('department', $user->department);
-                    $hasAccess = true;
-                }
-
-                // Research Supervisor: students they supervise
-                if (in_array('ResearchSupervisor', $userRoles)) {
-                    $q->orWhereHas('mainSupervisor', function ($sq) use ($user) {
-                        $sq->where('staff_number', $user->staff_number);
-                    });
-                    $hasAccess = true;
-                }
-
-                // Co-Supervisor: students they co-supervise
-                if (in_array('CoSupervisor', $userRoles)) {
-                    $q->orWhereHas('coSupervisors', function ($csq) use ($user) {
-                        $csq->where('lecturer_id', $user->lecturer->id);
-                    });
-                    $hasAccess = true;
-                }
-
-                // Chairperson: students they're chairing
-                if (in_array('Chairperson', $userRoles)) {
-                    $q->orWhereHas('evaluations', function ($eq) use ($user) {
-                        $eq->whereHas('chairperson', function ($cq) use ($user) {
-                            $cq->where('staff_number', $user->staff_number);
-                        });
-                    });
-                    $hasAccess = true;
-                }
-
-                // Examiner: always check for examiner positions (no role required)
-                $q->orWhereHas('evaluations', function ($eq) use ($user) {
-                    $eq->where(function ($exq) use ($user) {
-                        $exq->whereHas('examiner1', function ($e1q) use ($user) {
-                            $e1q->where('staff_number', $user->staff_number);
-                        })
-                        ->orWhereHas('examiner2', function ($e2q) use ($user) {
-                            $e2q->where('staff_number', $user->staff_number);
-                        })
-                        ->orWhereHas('examiner3', function ($e3q) use ($user) {
-                            $e3q->where('staff_number', $user->staff_number);
-                        });
-                    });
-                });
-
-                // If user has no relevant roles, return no results
-                if (!$hasAccess) {
-                    $q->whereRaw('1 = 0');
-                }
-            });
+        // Only PGAM and Program Coordinator can export
+        if (!(in_array('PGAM', $userRoles) || in_array('ProgramCoordinator', $userRoles))) {
+            // No access for other roles
+            $query->whereRaw('1 = 0');
+        } else if (in_array('ProgramCoordinator', $userRoles) && !in_array('PGAM', $userRoles)) {
+            // Program Coordinator: only their department
+            $query->where('department', $user->department);
         }
+        // PGAM: no restriction
 
-        // Apply additional filters
-        if (!empty($filters['program_id']) && is_numeric($filters['program_id'])) {
+        // All filters are optional
+        if (!empty($filters['department'])) {
+            $query->where('department', $filters['department']);
+        }
+        if (!empty($filters['program_id'])) {
             $query->where('program_id', $filters['program_id']);
         }
-
-        if (!empty($filters['evaluation_type']) && is_string($filters['evaluation_type'])) {
-            $query->where('evaluation_type', $filters['evaluation_type']);
-        }
-
-        if (isset($filters['is_postponed']) && is_bool($filters['is_postponed'])) {
-            $query->whereHas('evaluations', function ($q) use ($filters) {
-                $q->where('is_postponed', $filters['is_postponed']);
-            });
-        }
-
-        if (!empty($filters['semester']) && is_string($filters['semester'])) {
-            $query->whereHas('evaluations', function ($q) use ($filters) {
-                $q->where('semester', 'like', '%' . $filters['semester'] . '%');
-            });
-        }
-
-        if (!empty($filters['academic_year']) && is_string($filters['academic_year'])) {
+        if (!empty($filters['academic_year'])) {
             $query->whereHas('evaluations', function ($q) use ($filters) {
                 $q->where('academic_year', 'like', '%' . $filters['academic_year'] . '%');
             });
         }
-
-        if (!empty($filters['supervisor_id']) && is_numeric($filters['supervisor_id'])) {
-            $query->where('main_supervisor_id', $filters['supervisor_id']);
-        }
-
-        if (!empty($filters['coordinator_id']) && is_numeric($filters['coordinator_id'])) {
-            $query->whereHas('program', function ($q) use ($filters) {
-                $q->where('coordinator_id', $filters['coordinator_id']);
-            });
-        }
-
         return $query->get();
     }
 
@@ -177,18 +100,17 @@ class StudentExportService
     {
         $transformed = [];
         $counter = 1;
-
         foreach ($data as $student) {
-            $row = [];
-            
-            foreach ($columns as $column) {
-                $row[$column] = $this->getColumnValue($student, $column, $counter);
+            // Only include evaluations with nomination_status 'Locked'
+            foreach ($student->evaluations->where('nomination_status', 'Locked') as $evaluation) {
+                $row = [];
+                foreach ($columns as $column) {
+                    $row[$column] = $this->getColumnValue($student, $column, $counter, $evaluation);
+                }
+                $transformed[] = $row;
+                $counter++;
             }
-            
-            $transformed[] = $row;
-            $counter++;
         }
-
         return $transformed;
     }
 
@@ -198,39 +120,42 @@ class StudentExportService
      * @param Student $student
      * @param string $column
      * @param int $counter
+     * @param Evaluation|null $evaluation
      * @return string
      */
-    private function getColumnValue(Student $student, string $column, int $counter): string
+    private function getColumnValue(Student $student, string $column, int $counter, $evaluation = null): string
     {
         switch ($column) {
-            case 'bil':
+            case 'no':
                 return (string) $counter;
-            
-            case 'nama':
-                return $student->name ?? '';
-            
-            case 'no_matrik':
-                return $student->matric_number ?? '';
-            
-            case 'pd':
-                return $student->pd ?? '';
-            
-            case 'kod_program':
-                return $student->program->program_code ?? '';
-            
-            case 'nama_program':
-                return $student->program->program_name ?? '';
-            
-            case 'penyelia':
-                $supervisor = $student->mainSupervisor;
-                if ($supervisor) {
-                    return $supervisor->title . ' ' . $supervisor->name;
+            case 'student_name':
+                return (string) ($student->name ?? '');
+            case 'program':
+                return (string) ($student->program->program_name ?? '');
+            case 'evaluation_type':
+                return (string) ($student->evaluation_type ?? '');
+            case 'research_title':
+                return (string) ($student->research_title ?? '');
+            case 'current_semester':
+                $current = $evaluation && $evaluation->semester ? $evaluation->semester : '';
+                $total = $student->program && $student->program->total_semesters ? $student->program->total_semesters : '';
+                if ($current !== '' && $total !== '') {
+                    return (string) ("$current/$total");
+                } elseif ($current !== '') {
+                    return (string) $current;
+                } elseif ($total !== '') {
+                    return (string) ("0/$total");
                 }
                 return '';
-            
-            case 'penyelia_bersama_2':
+            case 'main_supervisor':
+                $supervisor = $student->mainSupervisor;
+                if ($supervisor) {
+                    return (string) ($supervisor->title . ' ' . $supervisor->name);
+                }
+                return '';
+            case 'co_supervisor':
                 $coSupervisors = $student->coSupervisors;
-                if ($coSupervisors->isNotEmpty()) {
+                if ($coSupervisors && $coSupervisors->isNotEmpty()) {
                     $names = [];
                     foreach ($coSupervisors as $coSupervisor) {
                         if ($coSupervisor->external_name) {
@@ -239,52 +164,33 @@ class StudentExportService
                             $names[] = $coSupervisor->lecturer->title . ' ' . $coSupervisor->lecturer->name;
                         }
                     }
-                    return implode("\n", $names);
+                    return (string) implode("\n", $names);
                 }
                 return '-';
-            
-            case 'sem':
-                $evaluation = $student->evaluations->first();
-                return $evaluation ? $evaluation->semester : '';
-            
-            case 'tajuk_sebelum':
-                return $student->research_title ?? '';
-            
-            case 'pemeriksa_1':
-                $evaluation = $student->evaluations->first();
+            case 'examiner_1':
                 if ($evaluation && $evaluation->examiner1) {
-                    return $evaluation->examiner1->title . ' ' . $evaluation->examiner1->name;
+                    return (string) ($evaluation->examiner1->title . ' ' . $evaluation->examiner1->name);
                 }
                 return '';
-            
-            case 'pemeriksa_2':
-                $evaluation = $student->evaluations->first();
+            case 'examiner_2':
                 if ($evaluation && $evaluation->examiner2) {
                     if ($evaluation->examiner2->is_from_fai) {
-                        return $evaluation->examiner2->title . ' ' . $evaluation->examiner2->name;
+                        return (string) ($evaluation->examiner2->title . ' ' . $evaluation->examiner2->name);
                     } else {
-                        return $evaluation->examiner2->name . ' (' . $evaluation->examiner2->external_institution . ')';
+                        return (string) ($evaluation->examiner2->name . ' (' . $evaluation->examiner2->external_institution . ')');
                     }
                 }
                 return '';
-            
-            case 'pemeriksa_3':
-                $evaluation = $student->evaluations->first();
+            case 'examiner_3':
                 if ($evaluation && $evaluation->examiner3) {
-                    return $evaluation->examiner3->title . ' ' . $evaluation->examiner3->name;
+                    return (string) ($evaluation->examiner3->title . ' ' . $evaluation->examiner3->name);
                 }
                 return '';
-            
-            case 'pengerusi':
-                $evaluation = $student->evaluations->first();
+            case 'chairperson':
                 if ($evaluation && $evaluation->chairperson) {
-                    return $evaluation->chairperson->title . ' ' . $evaluation->chairperson->name;
+                    return (string) ($evaluation->chairperson->title . ' ' . $evaluation->chairperson->name);
                 }
                 return '';
-            
-            case 'country':
-                return $student->country ?? '';
-            
             default:
                 return '';
         }
@@ -295,9 +201,10 @@ class StudentExportService
      *
      * @param array $data
      * @param array $columns
+     * @param array $filters
      * @return array
      */
-    private function exportToExcel(array $data, array $columns): array
+    private function exportToExcel(array $data, array $columns, array $filters = []): array
     {
         try {
             $spreadsheet = new Spreadsheet();
@@ -327,8 +234,18 @@ class StudentExportService
                 $sheet->getColumnDimension($column)->setAutoSize(true);
             }
 
-            // Generate filename
-            $filename = 'student_evaluation_export_' . Carbon::now()->format('Y-m-d_H-i-s') . '.xlsx';
+            // Generate filename with department and program code
+            $department = !empty($filters['department']) ? preg_replace('/\s+/', '_', $filters['department']) : 'all';
+            $programCode = 'all';
+            if (!empty($filters['program_id'])) {
+                // Try to get program code from first row if available
+                if (!empty($data[0]['program'])) {
+                    $programCode = preg_replace('/\s+/', '_', $data[0]['program']);
+                } else {
+                    $programCode = $filters['program_id'];
+                }
+            }
+            $filename = 'student_evaluation_export_' . $department . '_' . $programCode . '_' . Carbon::now()->format('Y-m-d_H-i-s') . '.xlsx';
             $filepath = public_path('exports/' . $filename);
 
             // Ensure exports directory exists in public folder
@@ -359,9 +276,10 @@ class StudentExportService
      *
      * @param array $data
      * @param array $columns
+     * @param array $filters
      * @return array
      */
-    private function exportToCsv(array $data, array $columns): array
+    private function exportToCsv(array $data, array $columns, array $filters = []): array
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -385,8 +303,17 @@ class StudentExportService
             $row++;
         }
 
-        // Generate filename
-        $filename = 'student_evaluation_export_' . Carbon::now()->format('Y-m-d_H-i-s') . '.csv';
+        // Generate filename with department and program code
+        $department = !empty($filters['department']) ? preg_replace('/\s+/', '_', $filters['department']) : 'all';
+        $programCode = 'all';
+        if (!empty($filters['program_id'])) {
+            if (!empty($data[0]['program'])) {
+                $programCode = preg_replace('/\s+/', '_', $data[0]['program']);
+            } else {
+                $programCode = $filters['program_id'];
+            }
+        }
+        $filename = 'student_evaluation_export_' . $department . '_' . $programCode . '_' . Carbon::now()->format('Y-m-d_H-i-s') . '.csv';
         $filepath = storage_path('app/temp/' . $filename);
 
         // Ensure temp directory exists
@@ -405,160 +332,170 @@ class StudentExportService
         ];
     }
 
-/**
- * Export to PowerPoint format
- *
- * @param array $data
- * @param array $columns
- * @return array
- */
-private function exportToPptx(array $data, array $columns): array
-{
-    try {
-        // Validate input
-        if (empty($columns)) {
-            throw new \Exception('No columns specified for export');
-        }
-        
-        $presentation = new PhpPresentation();
-        $slide = $presentation->getActiveSlide();
-        
-        // Add title
-        $titleShape = $slide->createRichTextShape();
-        $titleShape->setHeight(60)
-            ->setWidth(900)
-            ->setOffsetX(50)
-            ->setOffsetY(20);
-        
-        $titleParagraph = $titleShape->createParagraph();
-        $titleRun = $titleParagraph->createTextRun('Student Evaluation Report - ' . Carbon::now()->format('d/m/Y'));
-        $titleRun->getFont()->setSize(18)->setBold(true);
-        
-        // Calculate dimensions
-        $columnsCount = count($columns);
-        $dataRowsCount = count($data);
-        $cellWidth = 800 / $columnsCount;
-        $cellHeight = 35;
-        $startX = 50;
-        $startY = 100;
-        
-        // Create headers
-        $columnMap = $this->getColumnHeaders();
-        for ($colIndex = 0; $colIndex < $columnsCount; $colIndex++) {
-            $column = $columns[$colIndex];
+    /**
+     * Export to PowerPoint format
+     *
+     * @param array $data
+     * @param array $columns
+     * @param array $filters
+     * @return array
+     */
+    private function exportToPptx(array $data, array $columns, array $filters = []): array
+    {
+        try {
+            // Validate input
+            if (empty($columns)) {
+                throw new \Exception('No columns specified for export');
+            }
             
-            $headerShape = $slide->createRichTextShape();
-            $headerShape->setHeight($cellHeight)
-                ->setWidth($cellWidth)
-                ->setOffsetX($startX + ($colIndex * $cellWidth))
-                ->setOffsetY($startY);
+            $presentation = new PhpPresentation();
+            $slide = $presentation->getActiveSlide();
             
-            // Set background color for header
-            $headerShape->getFill()
-                ->setFillType(Fill::FILL_SOLID)
-                ->setStartColor(new Color('4472C4'));
+            // Add title
+            $titleShape = $slide->createRichTextShape();
+            $titleShape->setHeight(60)
+                ->setWidth(900)
+                ->setOffsetX(50)
+                ->setOffsetY(20);
             
-            // Add border to header
-            $headerShape->getBorder()
-                ->setLineStyle(\PhpOffice\PhpPresentation\Style\Border::LINE_SINGLE)
-                ->setLineWidth(1)
-                ->setColor(new Color('000000'));
+            $titleParagraph = $titleShape->createParagraph();
+            $titleRun = $titleParagraph->createTextRun('Student Evaluation Report - ' . Carbon::now()->format('d/m/Y'));
+            $titleRun->getFont()->setSize(18)->setBold(true);
             
-            $headerParagraph = $headerShape->createParagraph();
-            $headerRun = $headerParagraph->createTextRun($columnMap[$column] ?? $column);
-            $headerRun->getFont()->setBold(true)->setSize(9)->setColor(new Color('FFFFFF'));
+            // Calculate dimensions
+            $columnsCount = count($columns);
+            $dataRowsCount = count($data);
+            $cellWidth = 800 / $columnsCount;
+            $cellHeight = 35;
+            $startX = 50;
+            $startY = 100;
             
-            // Center align text
-            $headerParagraph->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $headerParagraph->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-        }
-        
-        // Create data rows
-        for ($dataIndex = 0; $dataIndex < $dataRowsCount; $dataIndex++) {
-            $rowData = $data[$dataIndex];
-            $rowY = $startY + (($dataIndex + 1) * $cellHeight);
-            
+            // Create headers
+            $columnMap = $this->getColumnHeaders();
             for ($colIndex = 0; $colIndex < $columnsCount; $colIndex++) {
                 $column = $columns[$colIndex];
                 
-                $cellShape = $slide->createRichTextShape();
-                $cellShape->setHeight($cellHeight)
+                $headerShape = $slide->createRichTextShape();
+                $headerShape->setHeight($cellHeight)
                     ->setWidth($cellWidth)
                     ->setOffsetX($startX + ($colIndex * $cellWidth))
-                    ->setOffsetY($rowY);
+                    ->setOffsetY($startY);
                 
-                // Set background color - alternate row colors
-                if ($dataIndex % 2 == 0) {
-                    $cellShape->getFill()
-                        ->setFillType(Fill::FILL_SOLID)
-                        ->setStartColor(new Color('F8F9FA'));
-                } else {
-                    $cellShape->getFill()
-                        ->setFillType(Fill::FILL_SOLID)
-                        ->setStartColor(new Color('FFFFFF'));
-                }
+                // Set background color for header
+                $headerShape->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->setStartColor(new Color('4472C4'));
                 
-                // Add border to data cell
-                $cellShape->getBorder()
+                // Add border to header
+                $headerShape->getBorder()
                     ->setLineStyle(\PhpOffice\PhpPresentation\Style\Border::LINE_SINGLE)
                     ->setLineWidth(1)
-                    ->setColor(new Color('CCCCCC'));
+                    ->setColor(new Color('000000'));
                 
-                $cellParagraph = $cellShape->createParagraph();
-                $cellValue = $rowData[$column] ?? '';
-                
-                // Handle long text by truncating if necessary
-                if (strlen($cellValue) > 40) {
-                    $cellValue = substr($cellValue, 0, 37) . '...';
-                }
-                
-                $cellRun = $cellParagraph->createTextRun($cellValue);
-                $cellRun->getFont()->setSize(8);
+                $headerParagraph = $headerShape->createParagraph();
+                $headerRun = $headerParagraph->createTextRun($columnMap[$column] ?? $column);
+                $headerRun->getFont()->setBold(true)->setSize(9)->setColor(new Color('FFFFFF'));
                 
                 // Center align text
-                $cellParagraph->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $cellParagraph->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                $headerParagraph->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $headerParagraph->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             }
+            
+            // Create data rows
+            for ($dataIndex = 0; $dataIndex < $dataRowsCount; $dataIndex++) {
+                $rowData = $data[$dataIndex];
+                $rowY = $startY + (($dataIndex + 1) * $cellHeight);
+                
+                for ($colIndex = 0; $colIndex < $columnsCount; $colIndex++) {
+                    $column = $columns[$colIndex];
+                    
+                    $cellShape = $slide->createRichTextShape();
+                    $cellShape->setHeight($cellHeight)
+                        ->setWidth($cellWidth)
+                        ->setOffsetX($startX + ($colIndex * $cellWidth))
+                        ->setOffsetY($rowY);
+                    
+                    // Set background color - alternate row colors
+                    if ($dataIndex % 2 == 0) {
+                        $cellShape->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->setStartColor(new Color('F8F9FA'));
+                    } else {
+                        $cellShape->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->setStartColor(new Color('FFFFFF'));
+                    }
+                    
+                    // Add border to data cell
+                    $cellShape->getBorder()
+                        ->setLineStyle(\PhpOffice\PhpPresentation\Style\Border::LINE_SINGLE)
+                        ->setLineWidth(1)
+                        ->setColor(new Color('CCCCCC'));
+                    
+                    $cellParagraph = $cellShape->createParagraph();
+                    $cellValue = $rowData[$column] ?? '';
+                    
+                    // Handle long text by truncating if necessary
+                    if (strlen($cellValue) > 40) {
+                        $cellValue = substr($cellValue, 0, 37) . '...';
+                    }
+                    
+                    $cellRun = $cellParagraph->createTextRun($cellValue);
+                    $cellRun->getFont()->setSize(8);
+                    
+                    // Center align text
+                    $cellParagraph->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $cellParagraph->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                }
+            }
+
+            // Add a border around the entire table area
+            $tableBorderShape = $slide->createRichTextShape();
+            $tableBorderShape->setHeight(($dataRowsCount + 1) * $cellHeight)
+                ->setWidth(800)
+                ->setOffsetX($startX)
+                ->setOffsetY($startY);
+            
+            // Make it transparent but with a thick border
+            $tableBorderShape->getFill()->setFillType(Fill::FILL_NONE);
+            $tableBorderShape->getBorder()
+                ->setLineStyle(\PhpOffice\PhpPresentation\Style\Border::LINE_SINGLE)
+                ->setLineWidth(2)
+                ->setColor(new Color('000000'));
+
+            // Generate filename with department and program code
+            $department = !empty($filters['department']) ? preg_replace('/\s+/', '_', $filters['department']) : 'all';
+            $programCode = 'all';
+            if (!empty($filters['program_id'])) {
+                if (!empty($data[0]['program'])) {
+                    $programCode = preg_replace('/\s+/', '_', $data[0]['program']);
+                } else {
+                    $programCode = $filters['program_id'];
+                }
+            }
+            $filename = 'student_evaluation_export_' . $department . '_' . $programCode . '_' . Carbon::now()->format('Y-m-d_H-i-s') . '.pptx';
+            $filepath = storage_path('app/temp/' . $filename);
+
+            if (!file_exists(dirname($filepath))) {
+                mkdir(dirname($filepath), 0755, true);
+            }
+
+            $writer = \PhpOffice\PhpPresentation\IOFactory::createWriter($presentation, 'PowerPoint2007');
+            $writer->save($filepath);
+
+            return [
+                'success' => true,
+                'file_path' => $filepath,
+                'filename' => $filename,
+                'content_type' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'PowerPoint export failed: ' . $e->getMessage() . ' (Data rows: ' . count($data) . ', Columns: ' . count($columns) . ')'
+            ];
         }
-
-        // Add a border around the entire table area
-        $tableBorderShape = $slide->createRichTextShape();
-        $tableBorderShape->setHeight(($dataRowsCount + 1) * $cellHeight)
-            ->setWidth(800)
-            ->setOffsetX($startX)
-            ->setOffsetY($startY);
-        
-        // Make it transparent but with a thick border
-        $tableBorderShape->getFill()->setFillType(Fill::FILL_NONE);
-        $tableBorderShape->getBorder()
-            ->setLineStyle(\PhpOffice\PhpPresentation\Style\Border::LINE_SINGLE)
-            ->setLineWidth(2)
-            ->setColor(new Color('000000'));
-
-        // Save file
-        $filename = 'student_evaluation_export_' . Carbon::now()->format('Y-m-d_H-i-s') . '.pptx';
-        $filepath = storage_path('app/temp/' . $filename);
-
-        if (!file_exists(dirname($filepath))) {
-            mkdir(dirname($filepath), 0755, true);
-        }
-
-        $writer = \PhpOffice\PhpPresentation\IOFactory::createWriter($presentation, 'PowerPoint2007');
-        $writer->save($filepath);
-
-        return [
-            'success' => true,
-            'file_path' => $filepath,
-            'filename' => $filename,
-            'content_type' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-        ];
-    } catch (\Exception $e) {
-        return [
-            'success' => false,
-            'message' => 'PowerPoint export failed: ' . $e->getMessage() . ' (Data rows: ' . count($data) . ', Columns: ' . count($columns) . ')'
-        ];
     }
-}
 
     /**
      * Get column headers mapping
@@ -568,20 +505,18 @@ private function exportToPptx(array $data, array $columns): array
     private function getColumnHeaders(): array
     {
         return [
-            'bil' => 'BIL.',
-            'nama' => 'NAMA',
-            'no_matrik' => 'NO. MATRIK',
-            'kod_program' => 'KOD PROGRAM',
-            'nama_program' => 'NAMA PROGRAM',
-            'penyelia' => 'PENYELIA',
-            'penyelia_bersama_2' => 'PENYELIA BERSAMA 2',
-            'sem' => 'SEM',
-            'tajuk_sebelum' => 'TAJUK SEBELUM',
-            'pemeriksa_1' => 'PEMERIKSA 1',
-            'pemeriksa_2' => 'PEMERIKSA 2',
-            'pemeriksa_3' => 'PEMERIKSA 3',
-            'pengerusi' => 'PENGERUSI',
-            'country' => 'COUNTRY'
+            'no' => 'No.',
+            'student_name' => 'Student Name',
+            'program' => 'Program',
+            'evaluation_type' => 'Evaluation Type',
+            'research_title' => 'Research Title',
+            'current_semester' => 'Current Semester',
+            'main_supervisor' => 'Main Supervisor',
+            'co_supervisor' => 'Co-Supervisor',
+            'examiner_1' => 'Examiner 1',
+            'examiner_2' => 'Examiner 2',
+            'examiner_3' => 'Examiner 3',
+            'chairperson' => 'Chairperson',
         ];
     }
 
@@ -593,20 +528,18 @@ private function exportToPptx(array $data, array $columns): array
     public function getAvailableColumns(): array
     {
         return [
-            'bil' => 'BIL.',
-            'nama' => 'NAMA',
-            'no_matrik' => 'NO. MATRIK',
-            'kod_program' => 'KOD PROGRAM',
-            'nama_program' => 'NAMA PROGRAM',
-            'penyelia' => 'PENYELIA',
-            'penyelia_bersama_2' => 'PENYELIA BERSAMA 2',
-            'sem' => 'SEM',
-            'tajuk_sebelum' => 'TAJUK SEBELUM',
-            'pemeriksa_1' => 'PEMERIKSA 1',
-            'pemeriksa_2' => 'PEMERIKSA 2',
-            'pemeriksa_3' => 'PEMERIKSA 3',
-            'pengerusi' => 'PENGERUSI',
-            'country' => 'COUNTRY'
+            'no' => 'No.',
+            'student_name' => 'Student Name',
+            'program' => 'Program',
+            'evaluation_type' => 'Evaluation Type',
+            'research_title' => 'Research Title',
+            'current_semester' => 'Current Semester',
+            'main_supervisor' => 'Main Supervisor',
+            'co_supervisor' => 'Co-Supervisor',
+            'examiner_1' => 'Examiner 1',
+            'examiner_2' => 'Examiner 2',
+            'examiner_3' => 'Examiner 3',
+            'chairperson' => 'Chairperson',
         ];
     }
 

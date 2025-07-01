@@ -62,20 +62,18 @@ class ExportStudentRequest extends FormRequest
     private function getAvailableColumns(): array
     {
         return [
-            'bil',
-            'nama',
-            'no_matrik',
-            'kod_program',
-            'nama_program',
-            'penyelia',
-            'penyelia_bersama_2',
-            'sem',
-            'tajuk_sebelum',
-            'pemeriksa_1',
-            'pemeriksa_2',
-            'pemeriksa_3',
-            'pengerusi',
-            'country'
+            'no',
+            'student_name',
+            'program',
+            'evaluation_type',
+            'research_title',
+            'current_semester',
+            'main_supervisor',
+            'co_supervisor',
+            'examiner_1',
+            'examiner_2',
+            'examiner_3',
+            'chairperson'
         ];
     }
 } 

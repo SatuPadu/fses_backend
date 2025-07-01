@@ -201,6 +201,34 @@ class NominationController extends Controller
      *         description="Filter by complete assignment status (true = all three examiners AND chairperson assigned, false = any examiner or chairperson missing)",
      *         @OA\Schema(type="boolean")
      *     ),
+     *     @OA\Parameter(
+     *         name="locked",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by lock status (true = only locked nominations, false = only unlocked nominations, not provided = all nominations)",
+     *         @OA\Schema(type="boolean")
+     *     ),
+     *     @OA\Parameter(
+     *         name="department",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by student department",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="program_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by student program ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="evaluation_type",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by evaluation type",
+     *         @OA\Schema(type="string")
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Nominations retrieved successfully",

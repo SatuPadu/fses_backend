@@ -222,6 +222,6 @@ class AssignmentService
               ->havingRaw('COUNT(*) >= 4');
         });
 
-        return $query->orderBy('name')->get();
+        return $query->orderBy('title', 'desc')->orderBy('name', 'asc')->get();
     }
 }

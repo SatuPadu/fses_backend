@@ -78,6 +78,52 @@ class ImportValidator
             ]);
             throw new \Exception("Invalid evaluation type: {$row['evaluation_type']}");
         }
+
+        $programMapping = [
+            'Doctor of Philosophy' => [
+                'code' => 'PhD',
+                'total_semesters' => 16,
+                'evaluation_semester' => 3,
+            ],
+            'Master of Philosophy' => [
+                'code' => 'MPhil',
+                'total_semesters' => 8,
+                'evaluation_semester' => 2,
+            ],
+            'Doctor of Software Engineering' => [
+                'code' => 'DSE',
+                'total_semesters' => 16,
+                'evaluation_semester' => [3, 5],
+            ]
+        ];
+        $programName = $row['program_name'];
+        $currentSemester = (int)($row['current_semester'] ?? 0);
+        $isReEvaluation = ($row['evaluation_type'] ?? null) === 'ReEvaluation';
+        if (isset($programMapping[$programName])) {
+            $evalSem = $programMapping[$programName]['evaluation_semester'];
+            $totalSem = $programMapping[$programName]['total_semesters'];
+            if ($isReEvaluation) {
+                if ($programName === 'Doctor of Software Engineering') {
+                    if ($currentSemester <= 5 || $currentSemester > $totalSem) {
+                        throw new \Exception("For Re-Evaluation, {$programName} students must be in semester greater than 5 and up to {$totalSem}, found semester {$currentSemester}");
+                    }
+                } else {
+                    if ($currentSemester <= $evalSem || $currentSemester > $totalSem) {
+                        throw new \Exception("For Re-Evaluation, {$programName} students must be in semester greater than {$evalSem} and up to {$totalSem}, found semester {$currentSemester}");
+                    }
+                }
+            } else {
+                if ($programName === 'Doctor of Software Engineering') {
+                    if (!in_array($currentSemester, [3, 5])) {
+                        throw new \Exception("The allowed semesters for first evaluation for {$programName} students are: 3, 5; found semester {$currentSemester}");
+                    }
+                } else {
+                    if ($currentSemester != $evalSem) {
+                        throw new \Exception("The allowed semester for first evaluation for {$programName} students is {$evalSem}, found semester {$currentSemester}");
+                    }
+                }
+            }
+        }
     }
 
     public function hasCompleteCoSupervisorData(array $row): bool
