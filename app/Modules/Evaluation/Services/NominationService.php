@@ -377,6 +377,19 @@ class NominationService
             });
         }
 
+        // Filter by student_name
+        if (isset($filters['student_name'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('name', 'like', '%' . $filters['student_name'] . '%');
+            });
+        }
+        // Filter by matric_number
+        if (isset($filters['matric_number'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('matric_number', 'like', '%' . $filters['matric_number'] . '%');
+            });
+        }
+
         // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
