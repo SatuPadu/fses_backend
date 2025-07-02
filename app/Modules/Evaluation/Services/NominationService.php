@@ -169,6 +169,10 @@ class NominationService
             $evaluation->is_postponed = true;
             $evaluation->postponement_reason = $request['reason'];
             $evaluation->postponed_to = $request['postponed_to'];
+            $evaluation->examiner1_id = null;
+            $evaluation->examiner2_id = null;
+            $evaluation->examiner3_id = null;
+            $evaluation->chairperson_id = null;
             $evaluation->save();
 
             // Send email notifications to all committee members (excluding office assistants)
@@ -320,10 +324,6 @@ class NominationService
 
         if (isset($filters['semester'])) {
             $query->where('semester', $filters['semester']);
-        }
-
-        if (isset($filters['with_locked']) && $filters['with_locked'] === 'false') {
-            $query->where('nomination_status', '!=', NominationStatus::LOCKED);
         }
 
         if (isset($filters['academic_year'])) {
