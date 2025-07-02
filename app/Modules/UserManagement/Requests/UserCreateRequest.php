@@ -24,7 +24,7 @@ class UserCreateRequest
     public static function validate(Request $request): array
     {
         $validator = Validator::make($request->all(), [
-            'staff_number' => ['required', 'unique:users'],
+            'staff_number' => ['required', 'unique:users', 'min:8', 'alpha_num'],
             'name' => ['required'],
             'title' => ['required', Rule::in(LecturerTitle::all())],
             'email' => ['required', 'unique:users'],
