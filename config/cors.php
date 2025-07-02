@@ -21,13 +21,29 @@ return [
 
     'allowed_origins' => [
         'http://localhost:8001',
-        'http://localhost:8080', 
+        'http://localhost:8080'
     ],
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => [
+        'Content-Type',
+        'X-Requested-With',
+        'Authorization',
+        'X-CSRF-TOKEN',
+        'Accept',
+        'Origin',
+        'X-Auth-Token',
+        'X-API-Key',
+    ],
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'Cache-Control',
+        'Content-Language',
+        'Content-Type',
+        'Expires',
+        'Last-Modified',
+        'Pragma',
+    ],
 
     'max_age' => 0,
 
