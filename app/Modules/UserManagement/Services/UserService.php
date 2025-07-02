@@ -291,18 +291,36 @@ class UserService
                         $lecturer->save();
                     }
                 } else {
-                    // Create new lecturer entry
-                    $lecturer = Lecturer::create([
-                        'name' => $request['name'],
-                        'email' => $request['email'],
-                        'staff_number' => $user->staff_number,
-                        'phone' => $request['phone'],
-                        'department' => $request['department'],
-                        'title' => $request['title'],
-                        'is_from_fai' => $request['department'] !== Department::OTHER,
-                        'external_institution' => $request['department'] === Department::OTHER ? 'External Institution' : null,
-                        'specialization' => $request['specialization'],
-                    ]);
+                    // Check if a lecturer entry already exists with this staff number
+                    $existingLecturer = Lecturer::where('staff_number', $user->staff_number)->first();
+                    
+                    if ($existingLecturer) {
+                        // Update existing lecturer entry
+                        $existingLecturer->name = $request['name'];
+                        $existingLecturer->email = $request['email'];
+                        $existingLecturer->department = $request['department'];
+                        $existingLecturer->is_from_fai = $request['department'] !== Department::OTHER;
+                        $existingLecturer->title = $request['title'];
+                        $existingLecturer->phone = $request['phone'];
+                        $existingLecturer->external_institution = $request['department'] === Department::OTHER ? 'External Institution' : null;
+                        $existingLecturer->specialization = $request['specialization'];
+                        $existingLecturer->save();
+                        
+                        $lecturer = $existingLecturer;
+                    } else {
+                        // Create new lecturer entry
+                        $lecturer = Lecturer::create([
+                            'name' => $request['name'],
+                            'email' => $request['email'],
+                            'staff_number' => $user->staff_number,
+                            'phone' => $request['phone'],
+                            'department' => $request['department'],
+                            'title' => $request['title'],
+                            'is_from_fai' => $request['department'] !== Department::OTHER,
+                            'external_institution' => $request['department'] === Department::OTHER ? 'External Institution' : null,
+                            'specialization' => $request['specialization'],
+                        ]);
+                    }
 
                     // Link lecturer and user entries
                     $user->lecturer_id = $lecturer->id;
