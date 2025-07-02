@@ -19,7 +19,7 @@ return [
     
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:8001'],
+    'allowed_origins' => ['*', 'http://localhost:8001', 'http://121.0.01:8001'],
 
     'allowed_origins_patterns' => [],
 
