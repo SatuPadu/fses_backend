@@ -181,8 +181,6 @@ Route::prefix('dashboard')->middleware(['jwt.verify', 'password.updated'])->grou
     Route::get('/research-supervisor', [DashboardController::class, 'researchSupervisor'])->middleware('role:ResearchSupervisor');
     Route::get('/program-coordinator', [DashboardController::class, 'programCoordinator'])->middleware('role:ProgramCoordinator');
     Route::get('/pgam', [DashboardController::class, 'pgam'])->middleware('role:PGAM');
-    Route::get('/system-overview', [DashboardController::class, 'systemOverview']);
-    Route::get('/recent-activity', [DashboardController::class, 'recentActivity']);
 });
 
 // Student Export Routes
