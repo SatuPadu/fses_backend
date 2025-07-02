@@ -4,9 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Modules\Evaluation\Models\Evaluation;
 
@@ -50,36 +48,17 @@ class EvaluationPostponedMail extends Mailable implements ShouldQueue
     }
 
     /**
-     * Get the message envelope.
+     * Build the message.
      */
-    public function envelope(): Envelope
+    public function build()
     {
-        return new Envelope(
-            subject: 'Evaluation Postponed - ' . $this->evaluation->student->name
-        );
-    }
-
-    /**
-     * Get the message content definition.
-     */
-    public function content(): Content
-    {
-        return new Content(
-            view: 'emails.evaluation_postponed',
-            with: [
-                'evaluation' => $this->evaluation,
-                'reason' => $this->reason,
-                'postponedTo' => $this->postponedTo,
-                'student' => $this->evaluation->student,
-            ],
-        );
-    }
-
-    /**
-     * Get the attachments for the message.
-     */
-    public function attachments(): array
-    {
-        return [];
+        return $this->subject('Evaluation Postponed - ' . $this->evaluation->student->name)
+                    ->view('emails.evaluation_postponed')
+                    ->with([
+                        'evaluation' => $this->evaluation,
+                        'reason' => $this->reason,
+                        'postponedTo' => $this->postponedTo,
+                        'student' => $this->evaluation->student,
+                    ]);
     }
 } 

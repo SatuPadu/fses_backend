@@ -15,13 +15,14 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'auth/*'],
+    'paths' => ['api/*'],
     
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*', 'http://localhost:8001', 'http://121.0.01:8001', 
-                          'http://localhost:8001/*',],
-
+    'allowed_origins' => [
+        'http://localhost:8001',
+        'http://localhost:8080', 
+    ],
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
@@ -30,6 +31,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
     
 ];

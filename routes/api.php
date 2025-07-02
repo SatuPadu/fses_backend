@@ -16,6 +16,7 @@ use App\Modules\Program\Controllers\ProgramController;
 use App\Modules\Student\Controllers\StudentExportController;
 use App\Modules\Evaluation\Controllers\EvaluationSummaryController;
 use App\Modules\UserManagement\Controllers\LogController;
+use App\Modules\Dashboard\Controllers\DashboardController;
 
 // API Health Check
 Route::get('/status', function () {
@@ -171,6 +172,17 @@ Route::prefix('logs')->middleware(['jwt.verify', 'password.updated', 'role:PGAM'
     Route::get('/entity-types', [LogController::class, 'entityTypes']);
     Route::get('/{id}', [LogController::class, 'show']);
     Route::delete('/clear-old', [LogController::class, 'clearOldLogs']);
+});
+
+// Dashboard Routes
+Route::prefix('dashboard')->middleware(['jwt.verify', 'password.updated'])->group(function () {
+    Route::get('/', [DashboardController::class, 'index']);
+    Route::get('/office-assistant', [DashboardController::class, 'officeAssistant'])->middleware('role:OfficeAssistant');
+    Route::get('/research-supervisor', [DashboardController::class, 'researchSupervisor'])->middleware('role:ResearchSupervisor');
+    Route::get('/program-coordinator', [DashboardController::class, 'programCoordinator'])->middleware('role:ProgramCoordinator');
+    Route::get('/pgam', [DashboardController::class, 'pgam'])->middleware('role:PGAM');
+    Route::get('/system-overview', [DashboardController::class, 'systemOverview']);
+    Route::get('/recent-activity', [DashboardController::class, 'recentActivity']);
 });
 
 // Student Export Routes
