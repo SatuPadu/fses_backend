@@ -322,10 +322,6 @@ class NominationService
             $query->where('semester', $filters['semester']);
         }
 
-        if (isset($filters['with_locked']) && $filters['with_locked'] === 'false') {
-            $query->where('nomination_status', '!=', NominationStatus::LOCKED);
-        }
-
         if (isset($filters['academic_year'])) {
             $query->where('academic_year', $filters['academic_year']);
         }
