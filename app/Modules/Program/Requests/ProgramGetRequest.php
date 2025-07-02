@@ -40,7 +40,7 @@ class ProgramGetRequest
             }],
             'program_code' => ['nullable', 'string'],
             'department' => ['nullable', Rule::in(Department::all())],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer'],
             'all' => ['nullable', 'string', 'in:true,false']
         ]);
 

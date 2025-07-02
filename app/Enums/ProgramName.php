@@ -1,9 +1,6 @@
 <?php
 
 namespace App\Enums;
-
-use Illuminate\Support\Facades\Log;
-
 /**
  * Program Name enum
  */

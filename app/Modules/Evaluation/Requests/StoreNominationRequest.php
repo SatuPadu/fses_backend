@@ -3,6 +3,8 @@
 namespace App\Modules\Evaluation\Requests;
 
 use Illuminate\Http\Request;
+use App\Enums\EvaluationType;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -14,6 +16,7 @@ class StoreNominationRequest
             'student_id' => ['required', 'exists:students,id'],
             'semester' => ['required', 'integer', 'min:1'],
             'academic_year' => ['required', 'string'],
+            'evaluation_type' => ['required', 'string', Rule::in(EvaluationType::all())],
             'research_title' => ['nullable', 'string', 'max:500'],
             'examiner1_id' => ['nullable', 'exists:lecturers,id', 'different:examiner2_id', 'different:examiner3_id'],
             'examiner2_id' => ['nullable', 'exists:lecturers,id', 'different:examiner1_id', 'different:examiner3_id'],

@@ -50,47 +50,78 @@ class ProgramService
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
-        if (in_array('PGAM', $userRoles)) {
-            // PGAM can see all programs, but department filter from request should still apply
+        // Check if user has any of the relevant roles
+        $hasPGAM = in_array('PGAM', $userRoles);
+        $hasOfficeAssistant = in_array('OfficeAssistant', $userRoles);
+        $hasProgramCoordinator = in_array('ProgramCoordinator', $userRoles);
+        $hasResearchSupervisor = in_array('ResearchSupervisor', $userRoles);
+        $hasChairperson = in_array('Chairperson', $userRoles);
+
+        if ($hasPGAM || $hasOfficeAssistant) {
+            // PGAM and Office Assistant can see all programs, but department filter from request should still apply
         }
-        elseif (in_array('OfficeAssistant', $userRoles)) {
-            // OfficeAssistant can see all programs, but department filter from request should still apply
-        }
-        // Check if user is a Program Coordinator (can only see users from their department) 
-        elseif (in_array('ProgramCoordinator', $userRoles)) {
-            $query->where('department', $user->department);
-        }
-        // Check if user is a Research Supervisor (can only see programs of their supervised students)
-        elseif (in_array('ResearchSupervisor', $userRoles)) {
-            $query->whereHas('students', function ($q) use ($user) {
-                $q->whereHas('mainSupervisor', function ($q2) use ($user) {
-                    $q2->where('staff_number', $user->staff_number);
-                });
-            });
-        }
-        // Check if user is a Chairperson (can only see programs of students they're chairing)
-        elseif (in_array('Chairperson', $userRoles)) {
-            $query->whereHas('students', function ($q) use ($user) {
-                $q->whereHas('evaluations', function ($evalQ) use ($user) {
-                    $evalQ->whereHas('chairperson', function ($cQ) use ($user) {
-                        $cQ->where('staff_number', $user->staff_number);
-                    });
-                });
-            });
-        }
-        // Default: no access (empty result)
         else {
-            $query->whereRaw('1 = 0'); // This will return no results
+            // For other roles, combine access permissions
+            $query->where(function ($q) use ($user, $hasProgramCoordinator, $hasResearchSupervisor, $hasChairperson) {
+                $hasAccess = false;
+
+                // Check if user is a Program Coordinator (can see programs from their department)
+                if ($hasProgramCoordinator) {
+                    $q->orWhere('department', $user->department);
+                    $hasAccess = true;
+                }
+
+                // Check if user is a Research Supervisor (can see programs of their supervised students)
+                if ($hasResearchSupervisor) {
+                    $q->orWhereHas('students', function ($studentQ) use ($user) {
+                        $studentQ->whereHas('mainSupervisor', function ($supervisorQ) use ($user) {
+                            $supervisorQ->where('staff_number', $user->staff_number);
+                        });
+                    });
+                    $hasAccess = true;
+                }
+
+                // Check if user is a Chairperson (can see programs of students they're chairing)
+                if ($hasChairperson) {
+                    $q->orWhereHas('students', function ($studentQ) use ($user) {
+                        $studentQ->whereHas('evaluations', function ($evalQ) use ($user) {
+                            $evalQ->whereHas('chairperson', function ($chairQ) use ($user) {
+                                $chairQ->where('staff_number', $user->staff_number);
+                            });
+                        });
+                    });
+                    $hasAccess = true;
+                }
+
+                // If user has no relevant roles, return no results
+                if (!$hasAccess) {
+                    $q->whereRaw('1 = 0');
+                }
+            });
         }
 
         $query->orderBy('created_at', 'desc');
 
-        // Check if all=true parameter is present
-        if (isset($request['all']) && $request['all'] === 'true') {
-            return $query->get();
+        // Check if all=true parameter is present or if numPerPage is -1 (return all items)
+        if ((isset($request['all']) && $request['all'] === 'true') || $numPerPage <= 0) {
+            $items = $query->get();
+            $count = $items->count();
+            return [
+                'items' => $items,
+                'pagination' => [
+                    'total' => $count,
+                    'per_page' => $count,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'from' => $count > 0 ? 1 : null,
+                    'to' => $count > 0 ? $count : null,
+                ]
+            ];
         }
 
-        return $query->paginate($numPerPage);
+        // Ensure numPerPage is at least 1 for pagination
+        $perPage = max(1, $numPerPage);
+        return $query->paginate($perPage);
     }
 
     /**

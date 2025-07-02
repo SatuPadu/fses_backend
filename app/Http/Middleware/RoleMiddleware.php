@@ -21,10 +21,10 @@ class RoleMiddleware
      *
      * @param Request $request
      * @param Closure $next
-     * @param string $role
+     * @param string $roles
      * @return mixed
      */
-    public function handle(Request $request, Closure $next, string $role)
+    public function handle(Request $request, Closure $next, string $roles)
     {
         $user = auth()->user();
 
@@ -35,14 +35,20 @@ class RoleMiddleware
             ], 401);
         }
 
-        // Check if user has the required role
-        if (!$this->permissionService->userHasSpecificRole($user, $role)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "Access denied. {$role} role required."
-            ], 403);
+        // Always allow PGAM
+        if ($this->permissionService->userHasSpecificRole($user, UserRole::PGAM)) {
+            return $next($request);
         }
 
-        return $next($request);
+        // Accept comma-separated roles, check if user has any
+        $roleList = array_map('trim', explode(',', $roles));
+        if ($this->permissionService->userHasRole($user, $roleList)) {
+            return $next($request);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Access denied. ' . implode(' or ', $roleList) . ' role required.'
+        ], 403);
     }
 } 

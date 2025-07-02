@@ -57,6 +57,7 @@ class RoleTableSeeder extends Seeder
                     'students' => ['view'],
                     'evaluations' => ['view', 'nominate', 'modify'],
                     'nominations' => ['view', 'create', 'edit', 'postpone'],
+                    'lecturers' => ['view', 'create'],
                 ]
             ],
             [

@@ -11,6 +11,7 @@ use App\Enums\LecturerTitle;
 use App\Enums\NominationStatus;
 use App\Enums\UserRole;
 use App\Mail\EvaluationPostponedMail;
+use App\Mail\NominationLockedMail;
 use App\Modules\Student\Models\Student;
 use App\Modules\UserManagement\Models\Lecturer;
 use App\Modules\Evaluation\Models\Evaluation;
@@ -90,7 +91,7 @@ class NominationService
         // Update student's research title if provided
         if (isset($request['research_title'])) {
             $student = Student::find($request['student_id']);
-            $student->update(['research_title' => $request['research_title']]);
+            $student->update(['research_title' => $request['research_title'], 'evaluation_type' => $request['evaluation_type']]);
         }
 
         $evaluation = Evaluation::create([
@@ -127,7 +128,7 @@ class NominationService
         // Update student's research title if provided
         if (isset($request['research_title'])) {
             $student = Student::find($evaluation->student_id);
-            $student->update(['research_title' => $request['research_title']]);
+            $student->update(['research_title' => $request['research_title'], 'evaluation_type' => $request['evaluation_type']]);
         }
 
         $evaluation->semester = $request['semester'] ?? $evaluation->semester;
@@ -252,7 +253,7 @@ class NominationService
             $lockedCount = 0;
             
             foreach ($evaluationIds as $evaluationId) {
-                $evaluation = Evaluation::find($evaluationId);
+                $evaluation = Evaluation::with(['student.program', 'student.mainSupervisor', 'examiner1', 'examiner2', 'examiner3', 'chairperson'])->find($evaluationId);
                 
                 if ($evaluation && $evaluation->nomination_status !== NominationStatus::LOCKED) {
                     $evaluation->nomination_status = NominationStatus::LOCKED;
@@ -260,11 +261,37 @@ class NominationService
                     $evaluation->locked_at = now();
                     $evaluation->save();
                     $lockedCount++;
+
+                    // Send email notification to research supervisor
+                    $this->sendLockNotification($evaluation);
                 }
             }
             
             return $lockedCount;
         });
+    }
+
+    /**
+     * Send email notification to research supervisor about nomination lock.
+     *
+     * @param Evaluation $evaluation
+     * @return void
+     */
+    private function sendLockNotification(Evaluation $evaluation): void
+    {
+        // Get the research supervisor
+        if ($evaluation->student->mainSupervisor) {
+            $supervisorUser = \App\Modules\Auth\Models\User::where('staff_number', $evaluation->student->mainSupervisor->staff_number)->first();
+            
+            if ($supervisorUser) {
+                try {
+                    Mail::to($supervisorUser->email)->send(new NominationLockedMail($evaluation));
+                } catch (Exception $e) {
+                    // Log the error but don't fail the entire operation
+                    Log::error('Failed to send lock notification email to ' . $supervisorUser->email . ': ' . $e->getMessage());
+                }
+            }
+        }
     }
 
     /**
@@ -295,6 +322,10 @@ class NominationService
             $query->where('semester', $filters['semester']);
         }
 
+        if (isset($filters['with_locked']) && $filters['with_locked'] === 'false') {
+            $query->where('nomination_status', '!=', NominationStatus::LOCKED);
+        }
+
         if (isset($filters['academic_year'])) {
             $query->where('academic_year', $filters['academic_year']);
         }
@@ -318,42 +349,125 @@ class NominationService
             }
         }
 
+        // Filter by lock status
+        if (isset($filters['locked'])) {
+            if (filter_var($filters['locked'], FILTER_VALIDATE_BOOLEAN)) {
+                // Only locked nominations
+                $query->where('nomination_status', NominationStatus::LOCKED);
+            } else {
+                // Only unlocked nominations
+                $query->where('nomination_status', '!=', NominationStatus::LOCKED);
+            }
+        }
+
+        // Filter by department
+        if (isset($filters['department'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('department', $filters['department']);
+            });
+        }
+
+        // Filter by program_id
+        if (isset($filters['program_id'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('program_id', $filters['program_id']);
+            });
+        }
+
+        // Filter by evaluation_type
+        if (isset($filters['evaluation_type'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('evaluation_type', $filters['evaluation_type']);
+            });
+        }
+
+        // Filter by student_name
+        if (isset($filters['student_name'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('name', 'like', '%' . $filters['student_name'] . '%');
+            });
+        }
+        // Filter by matric_number
+        if (isset($filters['matric_number'])) {
+            $query->whereHas('student', function ($studentQ) use ($filters) {
+                $studentQ->where('matric_number', 'like', '%' . $filters['matric_number'] . '%');
+            });
+        }
+
         // Apply role-based filtering
         $user = auth()->user();
         $userRoles = $user->roles->pluck('role_name')->toArray();
 
+        // Check if user has any of the relevant roles
+        $hasPGAM = in_array('PGAM', $userRoles);
+        $hasOfficeAssistant = in_array('OfficeAssistant', $userRoles);
+        $hasProgramCoordinator = in_array('ProgramCoordinator', $userRoles);
+        $hasResearchSupervisor = in_array('ResearchSupervisor', $userRoles);
+        $hasChairperson = in_array('Chairperson', $userRoles);
 
-        
-        if (in_array('PGAM', $userRoles)) {
+        if ($hasPGAM || $hasOfficeAssistant) {
+            // PGAM and Office Assistant can see all nominations
         }
-        elseif (in_array('OfficeAssistant', $userRoles)) {
-        }
-        // Check if user is a Program Coordinator (can only see users from their department) 
-        elseif (in_array('ProgramCoordinator', $userRoles)) {
-            $query->whereHas('student', function ($q) use ($user) {
-                $q->where('department', $user->department);
-            });
-        }
-        // Check if user is a Research Supervisor (can only see their supervised students)
-        elseif (in_array('ResearchSupervisor', $userRoles)) {
-            $query->whereHas('student', function ($q) use ($user) {
-                $q->whereHas('mainSupervisor', function ($q2) use ($user) {
-                    $q2->where('staff_number', $user->staff_number);
-                });
-            });
-        }
-        // Check if user is a Chairperson (can only see students they're chairing)
-        elseif (in_array('Chairperson', $userRoles)) {
-            $query->whereHas('chairperson', function ($cQ) use ($user) {
-                $cQ->where('staff_number', $user->staff_number);
-            });
-        }
-        // Default: no access (empty result)
         else {
-            $query->whereRaw('1 = 0'); // This will return no results
+            // For other roles, combine access permissions
+            $query->where(function ($q) use ($user, $hasProgramCoordinator, $hasResearchSupervisor, $hasChairperson) {
+                $hasAccess = false;
+
+                // Check if user is a Program Coordinator (can see nominations from their department)
+                if ($hasProgramCoordinator) {
+                    $q->orWhereHas('student', function ($studentQ) use ($user) {
+                        $studentQ->where('department', $user->department);
+                    });
+                    $hasAccess = true;
+                }
+
+                // Check if user is a Research Supervisor (can see their supervised students)
+                if ($hasResearchSupervisor) {
+                    $q->orWhereHas('student', function ($studentQ) use ($user) {
+                        $studentQ->whereHas('mainSupervisor', function ($supervisorQ) use ($user) {
+                            $supervisorQ->where('staff_number', $user->staff_number);
+                        });
+                    });
+                    $hasAccess = true;
+                }
+
+                // Check if user is a Chairperson (can see students they're chairing)
+                if ($hasChairperson) {
+                    $q->orWhereHas('chairperson', function ($chairQ) use ($user) {
+                        $chairQ->where('staff_number', $user->staff_number);
+                    });
+                    $hasAccess = true;
+                }
+
+                // If user has no relevant roles, return no results
+                if (!$hasAccess) {
+                    $q->whereRaw('1 = 0');
+                }
+            });
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($numPerPage);
+        $query->orderBy('created_at', 'desc');
+
+        // Check if all=true parameter is present or if numPerPage is -1 (return all items)
+        if ((isset($filters['all']) && $filters['all'] === 'true') || $numPerPage <= 0) {
+            $items = $query->get();
+            $count = $items->count();
+            return [
+                'items' => $items,
+                'pagination' => [
+                    'total' => $count,
+                    'per_page' => $count,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'from' => $count > 0 ? 1 : null,
+                    'to' => $count > 0 ? $count : null,
+                ]
+            ];
+        }
+
+        // Ensure numPerPage is at least 1 for pagination
+        $perPage = max(1, $numPerPage);
+        return $query->paginate($perPage);
     }
 
     /**

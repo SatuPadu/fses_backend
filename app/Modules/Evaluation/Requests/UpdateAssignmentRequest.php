@@ -13,7 +13,7 @@ class UpdateAssignmentRequest
         $validator = Validator::make($request->all(), [
             'assignments' => 'required|array',
             'assignments.*.evaluation_id' => 'required|integer|exists:student_evaluations,id',
-            'assignments.*.chairperson_id' => 'required|integer|exists:lecturers,id',
+            'assignments.*.chairperson_id' => 'required|integer|exists:lecturers,id,is_from_fai,1',
             'assignments.*.is_auto_assigned' => 'required|boolean',
         ]);
 

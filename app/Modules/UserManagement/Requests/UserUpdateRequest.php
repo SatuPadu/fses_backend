@@ -4,6 +4,7 @@ namespace App\Modules\UserManagement\Requests;
 
 use App\Enums\Department;
 use App\Enums\LecturerTitle;
+use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
@@ -28,8 +29,8 @@ class UserUpdateRequest
             'email' => ['required', Rule::unique('users')->ignore($id)],
             'department' => ['required', Rule::in(Department::all())],
             'phone' => ['nullable'],
-            'external_institution' => ['nullable'],
-            'specialization' => ['nullable']
+            'specialization' => ['nullable'],
+            'role' => ['required', Rule::in(UserRole::all())]
         ]);
 
         if($validator->fails()) {

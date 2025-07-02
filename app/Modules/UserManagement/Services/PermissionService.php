@@ -110,14 +110,15 @@ class PermissionService
     }
 
     /**
-     * Check if user can manage lecturers (Office Assistant, Program Coordinator, PGAM)
+     * Check if user can manage lecturers (Office Assistant, Program Coordinator, PGAM, Supervisor)
      */
     public function canManageLecturers(User $user): bool
     {
         return $user->hasAnyRole([
             UserRole::OFFICE_ASSISTANT,
             UserRole::PROGRAM_COORDINATOR,
-            UserRole::PGAM
+            UserRole::PGAM,
+            UserRole::SUPERVISOR
         ]);
     }
 
@@ -137,6 +138,7 @@ class PermissionService
                 'students' => ['view'],
                 'evaluations' => ['view', 'nominate', 'modify'],
                 'nominations' => ['view', 'create', 'edit', 'postpone'],
+                'lecturers' => ['view', 'create'],
             ],
             UserRole::PROGRAM_COORDINATOR => [
                 'students' => ['view', 'export'],

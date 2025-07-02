@@ -136,13 +136,26 @@ class LecturerService
 
         $query->orderBy('created_at', 'desc');
 
-        // Check if all=true parameter is present
-        if (isset($request['all']) && $request['all'] === 'true') {
-            return $query->get();
+        // Check if all=true parameter is present or if numPerPage is -1 (return all items)
+        if ((isset($request['all']) && $request['all'] === 'true') || $numPerPage <= 0) {
+            $items = $query->get();
+            $count = $items->count();
+            return [
+                'items' => $items,
+                'pagination' => [
+                    'total' => $count,
+                    'per_page' => $count,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'from' => $count > 0 ? 1 : null,
+                    'to' => $count > 0 ? $count : null,
+                ]
+            ];
         }
 
-        // Execute final query and returns results
-        return $query->paginate($numPerPage);
+        // Ensure numPerPage is at least 1 for pagination
+        $perPage = max(1, $numPerPage);
+        return $query->paginate($perPage);
     }
 
     /**
@@ -262,13 +275,26 @@ class LecturerService
 
         $query->orderBy('created_at', 'desc');
 
-        // Check if all=true parameter is present
-        if (isset($request['all']) && $request['all'] === 'true') {
-            return $query->get();
+        // Check if all=true parameter is present or if numPerPage is -1 (return all items)
+        if ((isset($request['all']) && $request['all'] === 'true') || $numPerPage <= 0) {
+            $items = $query->get();
+            $count = $items->count();
+            return [
+                'items' => $items,
+                'pagination' => [
+                    'total' => $count,
+                    'per_page' => $count,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'from' => $count > 0 ? 1 : null,
+                    'to' => $count > 0 ? $count : null,
+                ]
+            ];
         }
 
-        // Execute final query and returns results
-        return $query->paginate($numPerPage);
+        // Ensure numPerPage is at least 1 for pagination
+        $perPage = max(1, $numPerPage);
+        return $query->paginate($perPage);
     }
 
     /**

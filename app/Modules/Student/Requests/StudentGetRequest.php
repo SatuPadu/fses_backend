@@ -33,7 +33,7 @@ class StudentGetRequest
             'academic_year' => ['nullable', 'string'],
             'supervisor_id' => ['nullable', 'integer', 'exists:lecturers,id'],
             'coordinator_id' => ['nullable', 'integer', 'exists:users,id'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer'],
             'with_evaluation' => ['nullable', 'string', 'in:true,false,0,1'],
             'my_role' => ['nullable', 'string', Rule::in(UserRole::all())],
             'email' => ['nullable', 'email'],

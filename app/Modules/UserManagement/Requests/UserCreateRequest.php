@@ -4,6 +4,7 @@ namespace App\Modules\UserManagement\Requests;
 
 use App\Enums\Department;
 use App\Enums\LecturerTitle;
+use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
@@ -23,14 +24,14 @@ class UserCreateRequest
     public static function validate(Request $request): array
     {
         $validator = Validator::make($request->all(), [
-            'staff_number' => ['required', 'unique:lecturers'],
+            'staff_number' => ['required', 'unique:users'],
             'name' => ['required'],
             'title' => ['required', Rule::in(LecturerTitle::all())],
-            'email' => ['required', 'unique:lecturers'],
+            'email' => ['required', 'unique:users'],
             'department' => ['required', Rule::in(Department::all())],
             'phone' => ['nullable'],
-            'external_institution' => ['nullable'],
-            'specialization' => ['nullable']
+            'specialization' => ['nullable'],
+            'role' => ['required', Rule::in(UserRole::all())]
         ]);
 
         if($validator->fails()) {
