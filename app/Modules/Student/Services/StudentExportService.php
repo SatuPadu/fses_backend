@@ -25,7 +25,7 @@ class StudentExportService
     {
         try {
             $data = $this->getFilteredData($filters);
-            $transformedData = $this->transformData($data, $columns);
+            $transformedData = $this->transformData($data, $columns, $filters);
             
             switch ($format) {
                 case 'excel':
@@ -58,7 +58,7 @@ class StudentExportService
             'evaluations.examiner3.user',
             'evaluations.chairperson.user',
             'mainSupervisor.user',
-            'coSupervisors.lecturer.user'
+            'coSupervisors.lecturer'
         ]);
 
         $user = auth()->user();
@@ -86,6 +86,22 @@ class StudentExportService
                 $q->where('academic_year', 'like', '%' . $filters['academic_year'] . '%');
             });
         }
+        
+        // Filter by postponement status
+        if (isset($filters['is_postponed'])) {
+            if (filter_var($filters['is_postponed'], FILTER_VALIDATE_BOOLEAN)) {
+                // Only get students with postponed evaluations (nomination_status = 'Postponed')
+                $query->whereHas('evaluations', function ($q) {
+                    $q->where('nomination_status', 'Postponed');
+                });
+            } else {
+                // Only get students with non-postponed evaluations (nomination_status = 'Locked')
+                $query->whereHas('evaluations', function ($q) {
+                    $q->where('nomination_status', 'Locked');
+                });
+            }
+        }
+        
         return $query->get();
     }
 
@@ -94,15 +110,32 @@ class StudentExportService
      *
      * @param \Illuminate\Database\Eloquent\Collection $data
      * @param array $columns
+     * @param array $filters
      * @return array
      */
-    private function transformData($data, array $columns): array
+    private function transformData($data, array $columns, array $filters = []): array
     {
         $transformed = [];
         $counter = 1;
         foreach ($data as $student) {
-            // Only include evaluations with nomination_status 'Locked'
-            foreach ($student->evaluations->where('nomination_status', 'Locked') as $evaluation) {
+            // Determine which evaluations to include based on filters
+            $evaluationsToInclude = $student->evaluations;
+            
+            // Check if is_postponed filter is set
+            if (isset($filters['is_postponed'])) {
+                if (filter_var($filters['is_postponed'], FILTER_VALIDATE_BOOLEAN)) {
+                    // Only include evaluations with nomination_status 'Postponed'
+                    $evaluationsToInclude = $student->evaluations->where('nomination_status', 'Postponed');
+                } else {
+                    // Only include evaluations with nomination_status 'Locked' (non-postponed)
+                    $evaluationsToInclude = $student->evaluations->where('nomination_status', 'Locked');
+                }
+            } else {
+                // Default behavior: only include evaluations with nomination_status 'Locked'
+                $evaluationsToInclude = $student->evaluations->where('nomination_status', 'Locked');
+            }
+            
+            foreach ($evaluationsToInclude as $evaluation) {
                 $row = [];
                 foreach ($columns as $column) {
                     $row[$column] = $this->getColumnValue($student, $column, $counter, $evaluation);
@@ -166,7 +199,7 @@ class StudentExportService
                     }
                     return (string) implode("\n", $names);
                 }
-                return '-';
+                return '';
             case 'examiner_1':
                 if ($evaluation && $evaluation->examiner1) {
                     return (string) ($evaluation->examiner1->title . ' ' . $evaluation->examiner1->name);

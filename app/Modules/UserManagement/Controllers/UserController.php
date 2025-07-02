@@ -10,6 +10,8 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Modules\UserManagement\Services\UserService;
 use Illuminate\Http\Response;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
 
 /**
  * @OA\Tag(
@@ -56,7 +58,7 @@ class UserController extends Controller
             $validated_request = UserCreateRequest::validate($request);
             $result = $this->userService->newUser($validated_request);
             return $this->sendCreatedResponse($result, 'User added successfully!');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->sendValidationError($e->errors());
         } catch (\Exception $e) {
             return $this->sendError(
@@ -80,13 +82,13 @@ class UserController extends Controller
             $validated_request = UserUpdateRequest::validate($request, $id);
             $result = $this->userService->updateUser($id, $validated_request);
             return $this->sendResponse($result, 'User info updated successfully!');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return $this->sendError(
                 'User does not exist',
                 ['error' => 'User does not exist'],
                 Response::HTTP_NOT_FOUND
             );
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->sendValidationError($e->errors());
         } catch (\Exception $e) {
             return $this->sendError(

@@ -2,10 +2,8 @@
 
 namespace App\Modules\Evaluation\Services;
 
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Enums\LecturerTitle;
-use App\Enums\NominationStatus;
 use App\Enums\UserRole;
 use App\Modules\Evaluation\Models\Evaluation;
 use App\Modules\UserManagement\Models\Lecturer;
@@ -211,6 +209,9 @@ class AssignmentService
      */
     public function chairpersonSuggestions()
     {
+        // Get the latest academic year
+        $latestAcademicYear = Evaluation::max('academic_year');
+        
         $query = Lecturer::where('is_from_fai', true)
             ->whereIn('title', [LecturerTitle::PROFESSOR, LecturerTitle::PROFESSOR_MADYA]);
 
@@ -222,6 +223,18 @@ class AssignmentService
               ->havingRaw('COUNT(*) >= 4');
         });
 
-        return $query->orderBy('title', 'desc')->orderBy('name', 'asc')->get();
+        $chairpersons = $query->orderBy('title', 'desc')->orderBy('name', 'asc')->get();
+
+        // Add latest academic year count for each chairperson
+        foreach ($chairpersons as $chairperson) {
+            $latestYearCount = $chairperson->chairedEvaluations()
+                ->where('academic_year', $latestAcademicYear)
+                ->count();
+            
+            $chairperson->latest_academic_year_count = $latestYearCount;
+            $chairperson->latest_academic_year = $latestAcademicYear;
+        }
+
+        return $chairpersons;
     }
 }

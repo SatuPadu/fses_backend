@@ -33,7 +33,7 @@ return new class extends Migration
             $table->text('referrer_url')->nullable();
             $table->integer('duration')->nullable();
             $table->boolean('system_event')->default(false);
-            $table->timestamp('created_at');
+            $table->timestamps();
             $table->softDeletes();
         });
     }

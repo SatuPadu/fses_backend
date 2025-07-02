@@ -32,6 +32,7 @@ class ExportStudentRequest extends FormRequest
             'filters.academic_year' => ['sometimes', 'string'],
             'filters.supervisor_id' => ['sometimes', 'integer', 'exists:lecturers,id'],
             'filters.coordinator_id' => ['sometimes', 'integer', 'exists:lecturers,id'],
+            'filters.is_postponed' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -51,6 +52,7 @@ class ExportStudentRequest extends FormRequest
             'filters.program_id.exists' => 'Selected program does not exist.',
             'filters.supervisor_id.exists' => 'Selected supervisor does not exist.',
             'filters.coordinator_id.exists' => 'Selected coordinator does not exist.',
+            'filters.is_postponed.boolean' => 'The is_postponed filter must be a boolean value.',
         ];
     }
 

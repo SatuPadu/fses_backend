@@ -15,6 +15,7 @@ use App\Modules\Evaluation\Controllers\ExaminerSuggestionController;
 use App\Modules\Program\Controllers\ProgramController;
 use App\Modules\Student\Controllers\StudentExportController;
 use App\Modules\Evaluation\Controllers\EvaluationSummaryController;
+use App\Modules\UserManagement\Controllers\LogController;
 
 // API Health Check
 Route::get('/status', function () {
@@ -160,6 +161,16 @@ Route::prefix('settings')->middleware(['jwt.verify', 'password.updated', 'role:P
         // Update settings
         return response()->json(['message' => 'Update settings endpoint']);
     });
+});
+
+// Log Management Routes (PGAM only)
+Route::prefix('logs')->middleware(['jwt.verify', 'password.updated', 'role:PGAM'])->group(function () {
+    Route::get('/', [LogController::class, 'index']);
+    Route::get('/statistics', [LogController::class, 'statistics']);
+    Route::get('/action-types', [LogController::class, 'actionTypes']);
+    Route::get('/entity-types', [LogController::class, 'entityTypes']);
+    Route::get('/{id}', [LogController::class, 'show']);
+    Route::delete('/clear-old', [LogController::class, 'clearOldLogs']);
 });
 
 // Student Export Routes

@@ -31,7 +31,8 @@ class UserCreateRequest
             'department' => ['required', Rule::in(Department::all())],
             'phone' => ['nullable'],
             'specialization' => ['nullable'],
-            'role' => ['required', Rule::in(UserRole::all())]
+            'roles' => ['required', 'array'],
+            'roles.*' => ['required', Rule::in(UserRole::all())]
         ]);
 
         if($validator->fails()) {

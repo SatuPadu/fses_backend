@@ -193,11 +193,13 @@ class UserService
                 'department' => $request['department'],
             ]);
 
-            // Assign role to user
-            $this->assignRoleToUser($user, $request['role']);
+            // Assign roles to user
+            foreach ($request['roles'] as $roleName) {
+                $this->assignRoleToUser($user, $roleName);
+            }
 
             // Only create lecturer entry if not Office Assistant and department is not OTHER
-            $shouldCreateLecturer = $request['role'] !== UserRole::OFFICE_ASSISTANT && $request['department'] !== Department::OTHER;
+            $shouldCreateLecturer = !in_array(UserRole::OFFICE_ASSISTANT, $request['roles']) && $request['department'] !== Department::OTHER;
             
             if ($shouldCreateLecturer) {
                 // Create corresponding lecturer entry
@@ -257,19 +259,21 @@ class UserService
             $user->email = $request['email'];
             $user->save();
 
-            // Update role if changed
-            $currentRole = $user->roles()->first();
-            if (!$currentRole || $currentRole->role_name !== $request['role']) {
-                // Remove current role
-                if ($currentRole) {
-                    $user->roles()->detach($currentRole->id);
+            // Update roles if changed
+            $currentRoles = $user->roles()->pluck('role_name')->toArray();
+            $newRoles = $request['roles'];
+            
+            if ($currentRoles != $newRoles) {
+                // Remove all current roles
+                $user->roles()->detach();
+                // Assign new roles
+                foreach ($newRoles as $roleName) {
+                    $this->assignRoleToUser($user, $roleName);
                 }
-                // Assign new role
-                $this->assignRoleToUser($user, $request['role']);
             }
 
-            // Handle lecturer entry based on role and department
-            $shouldHaveLecturer = $request['role'] !== UserRole::OFFICE_ASSISTANT && $request['department'] !== Department::OTHER;
+            // Handle lecturer entry based on roles and department
+            $shouldHaveLecturer = !in_array(UserRole::OFFICE_ASSISTANT, $request['roles']) && $request['department'] !== Department::OTHER;
             
             if ($shouldHaveLecturer) {
                 // Update or create lecturer entry
@@ -291,7 +295,7 @@ class UserService
                     $lecturer = Lecturer::create([
                         'name' => $request['name'],
                         'email' => $request['email'],
-                        'staff_number' => $request['staff_number'],
+                        'staff_number' => $user->staff_number,
                         'phone' => $request['phone'],
                         'department' => $request['department'],
                         'title' => $request['title'],

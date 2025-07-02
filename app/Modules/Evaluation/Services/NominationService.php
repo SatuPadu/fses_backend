@@ -169,14 +169,16 @@ class NominationService
             $evaluation->is_postponed = true;
             $evaluation->postponement_reason = $request['reason'];
             $evaluation->postponed_to = $request['postponed_to'];
+            $evaluation->save();
+
+            // Send email notifications to all committee members (excluding office assistants)
+            $this->sendPostponementNotifications($evaluation, $request['reason'], $request['postponed_to']);
+
             $evaluation->examiner1_id = null;
             $evaluation->examiner2_id = null;
             $evaluation->examiner3_id = null;
             $evaluation->chairperson_id = null;
             $evaluation->save();
-
-            // Send email notifications to all committee members (excluding office assistants)
-            $this->sendPostponementNotifications($evaluation, $request['reason'], $request['postponed_to']);
 
             return $evaluation;
         });
@@ -319,7 +321,7 @@ class NominationService
         }
 
         if (isset($filters['is_postponed'])) {
-            $query->where('is_postponed', $filters['is_postponed']);
+            $query->where('is_postponed', filter_var($filters['is_postponed'], FILTER_VALIDATE_BOOLEAN));
         }
 
         if (isset($filters['semester'])) {
@@ -400,13 +402,12 @@ class NominationService
 
         // Check if user has any of the relevant roles
         $hasPGAM = in_array('PGAM', $userRoles);
-        $hasOfficeAssistant = in_array('OfficeAssistant', $userRoles);
         $hasProgramCoordinator = in_array('ProgramCoordinator', $userRoles);
         $hasResearchSupervisor = in_array('ResearchSupervisor', $userRoles);
         $hasChairperson = in_array('Chairperson', $userRoles);
 
-        if ($hasPGAM || $hasOfficeAssistant) {
-            // PGAM and Office Assistant can see all nominations
+        if ($hasPGAM) {
+            // PGAM can see all nominations
         }
         else {
             // For other roles, combine access permissions
