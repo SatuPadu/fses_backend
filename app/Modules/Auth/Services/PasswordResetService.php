@@ -3,7 +3,7 @@
 namespace App\Modules\Auth\Services;
 
 use Carbon\Carbon;
-use App\Models\User;
+use App\Modules\Auth\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
